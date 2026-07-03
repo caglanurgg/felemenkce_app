@@ -8,7 +8,6 @@ st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌍",
 
 st.markdown("""
     <style>
-    /* GitHub simgesini, Share butonunu ve üst bar elemanlarını tamamen gizler */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
@@ -79,7 +78,6 @@ if api_key:
         
         with st.spinner(f"Generating {target_language} data structure..."):
             try:
-                # Kullanıcının seçtiği egzersizleri prompta ve JSON şemasına dikte ediyoruz
                 exercise_requirements = []
                 json_exercise_schema = {}
                 
@@ -125,9 +123,6 @@ if api_key:
                 
                 raw_json_string = response.choices[0].message.content
                 st.session_state['json_data'] = json.loads(raw_json_string)
-                # Yeni metin üretildiğinde eski kullanıcı cevaplarını temizle
-                if 'user_answers' in st.session_state:
-                    del st.session_state['user_answers']
 
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
@@ -164,52 +159,46 @@ if api_key:
             
         st.write("---")
         
-        # 🛠️ İnteraktif Egzersiz Yapısı (Kullanıcının Seçim Yapabileceği Alan)
         st.subheader("✍️ Interactive Exercises")
         exercises = data.get('exercises', {})
         
-        # Form kullanarak sayfayı her tıklamada yukarı atmaktan kurtarıyoruz
-        with St.form("exercise_form"):
+        with st.form("exercise_form"):
             user_tf_answers = {}
             user_mc_answers = {}
             user_open_text = ""
 
-            if "true_false" in exercises:
+            if "true_false" in exercises and exercises["true_false"]:
                 st.markdown("### 📋 True / False Statements")
                 for i, tf in enumerate(exercises["true_false"]):
                     st.write(f"**{i+1}.** {tf.get('statement')}")
-                    # Radyo butonları ile seçim yaptırıyoruz
                     ans = st.radio("Your Answer:", ["Not Answered", "True", "False"], key=f"tf_radio_{i}", horizontal=True)
                     user_tf_answers[i] = ans
                 st.write("---")
                     
-            if "multiple_choice" in exercises:
+            if "multiple_choice" in exercises and exercises["multiple_choice"]:
                 st.markdown("### ❓ Reading Comprehension")
                 for i, mc in enumerate(exercises["multiple_choice"]):
                     st.write(f"**Q{i+1}:** {mc.get('question')}")
-                    # Seçenekleri yan yana veya alt alta şıkça gösteriyoruz
                     options_list = mc.get('options', [])
                     ans = st.radio("Choose the correct option:", ["Not Answered"] + options_list, key=f"mc_radio_{i}")
                     user_mc_answers[i] = ans
                 st.write("---")
 
-            if "open_ended" in exercises:
+            if "open_ended" in exercises and exercises["open_ended"]:
                 st.markdown("### 📝 Open-ended Writing Prompt")
                 st.write(exercises["open_ended"])
                 user_open_text = st.text_area("Write your response here:", placeholder="Type your answer in the target language...", key="open_text_area")
                 st.write("---")
 
-            # Cevapları Kontrol Et Butonu
             submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
 
-        # Butona basıldığında sonuç değerlendirmesini ekrana basıyoruz
         if submit_answers:
             st.markdown("### 📊 Evaluation Results")
             
-            if "true_false" in exercises:
+            if "true_false" in exercises and exercises["true_false"]:
                 st.markdown("#### True / False Evaluation:")
                 for i, tf in enumerate(exercises["true_false"]):
-                    correct = tf.get('correct_answer') 
+                    correct = tf.get('correct_answer')
                     user_ans_str = user_tf_answers[i]
                     
                     if user_ans_str == "Not Answered":
@@ -221,10 +210,10 @@ if api_key:
                         else:
                             st.error(f"Statement {i+1}: Incorrect ❌ (Correct Answer: {correct})")
 
-            if "multiple_choice" in exercises:
+            if "multiple_choice" in exercises and exercises["multiple_choice"]:
                 st.markdown("#### Multiple Choice Evaluation:")
                 for i, mc in enumerate(exercises["multiple_choice"]):
-                    correct_opt = mc.get('correct_option') 
+                    correct_opt = mc.get('correct_option')
                     user_ans_str = user_mc_answers[i]
                     
                     if user_ans_str == "Not Answered":
@@ -237,9 +226,9 @@ if api_key:
                         elif user_ans_str.startswith("C") and correct_opt == "C":
                             st.success(f"Question {i+1}: Correct! ✅")
                         else:
-                            st.error(f"Question {i+1}: Incorrect ❌ (Correct Option: {correct_opt})")
+                            st.error(f"Question {i+1}: Incorrect ❌ (Correct Option Harfi: {correct_opt})")
 
-            if "open_ended" in exercises and user_open_text:
+            if "open_ended" in exercises and exercises["open_ended"] and user_open_text:
                 st.info("📝 Your open-ended writing response has been saved. Great effort practicing!")
 
         st.write("---")
