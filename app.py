@@ -1,6 +1,7 @@
 import streamlit as st
 from openai import OpenAI
 import os
+import json
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌍", layout="centered")
@@ -14,7 +15,7 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 st.markdown("<h1 class='main-title'>🌍 Universal AI Reading Platform</h1>", unsafe_allow_html=True)
-st.markdown("<p class='subtitle'>Enhance your reading, vocabulary, and listening skills with Artificial Intelligence.</p>", unsafe_allow_html=True)
+st.markdown("<p class='subtitle'>Enhance your reading, vocabulary, and listening skills with Structured Data.</p>", unsafe_allow_html=True)
 st.write("---")
 
 # 2. Güvenli API Anahtarı Yönetimi
@@ -27,7 +28,7 @@ if not api_key:
 if api_key:
     client = OpenAI(api_key=api_key)
 
-    # 🌍 Dil Seçim Kutusu (En Üstte)
+    # 🌍 Dil Seçim Kutusu
     target_language = st.selectbox(
         "Select the language you want to learn:",
         ["Nederlands", "English", "French", "Korean", "Spanish"]
@@ -48,7 +49,7 @@ if api_key:
 
     st.write("")
     
-    # 📝 Egzersiz Türü Seçimleri (Abinin istediği zenginleştirilmiş yapı)
+    # 📝 Egzersiz Türü Seçimleri
     st.markdown("### 🛠️ Select Exercise Types")
     ex_col1, ex_col2, ex_col3 = st.columns(3)
     with ex_col1:
@@ -62,35 +63,45 @@ if api_key:
     st.write("")
     if st.button("Generate Text & Exercises 🚀", use_container_width=True):
         
-        with st.spinner(f"Generating {target_language} text and exercises..."):
+        with st.spinner(f"Generating {target_language} data structure..."):
             try:
-                # Egzersiz tercihlerine göre promptu dinamik olarak inşa ediyoruz
-                exercise_instructions = []
+                # Kullanıcının seçtiği egzersizleri prompta ve JSON şemasına dikte ediyoruz
+                exercise_requirements = []
+                json_exercise_schema = {}
+                
                 if show_tf:
-                    exercise_instructions.append("- True/False Questions (3 statements based on the text)")
+                    exercise_requirements.append("- true_false: 3 statements based on the text, each having 'statement' (string) and 'correct_answer' (boolean: true/false).")
+                    json_exercise_schema["true_false"] = [{"statement": "example", "correct_answer": True}]
                 if show_mc:
-                    exercise_instructions.append("- Multiple Choice Questions (3 comprehension questions with A, B, C options)")
+                    exercise_requirements.append("- multiple_choice: 3 questions, each having 'question' (string), 'options' (array of 3 strings), and 'correct_option' (string: A, B, or C).")
+                    json_exercise_schema["multiple_choice"] = [{"question": "example", "options": ["A", "B", "C"], "correct_option": "B"}]
                 if show_writing:
-                    exercise_instructions.append("- Open-ended Writing Exercise (A prompt asking the user to write a short text related to the topic)")
+                    exercise_requirements.append("- open_ended: 1 writing prompt string asking the user to write a short paragraph related to the text.")
+                    json_exercise_schema["open_ended"] = "example writing prompt prompt here"
 
-                exercise_format = "\n".join(exercise_instructions)
+                exercise_req_text = "\n".join(exercise_requirements)
 
                 system_prompt = (
-                    f"You are an experienced {target_language} language teacher.\n"
-                    "Always generate output in this strict format:\n"
-                    f"1. Reading Text in {target_language} (with a suitable title)\n"
-                    "2. --- (Horizontal Rule)\n"
-                    f"3. Vocabulary (Exactly 5 words with {target_language} -> Turkish translations)\n"
-                    "4. --- (Horizontal Rule)\n"
-                    f"5. Exercises (Include only the following requested types):\n"
-                    f"{exercise_format}\n\n"
-                    "Do not explain grammar. Do not provide the answers at the end."
+                    f"You are an expert {target_language} language teacher that outputs raw JSON data.\n"
+                    "You must return a valid JSON object matching this strict schema exactly:\n"
+                    "{\n"
+                    "  \"title\": \"Title of the reading text\",\n"
+                    f"  \"text\": \"The complete reading text generated in {target_language}\",\n"
+                    "  \"vocabulary\": [\n"
+                    f"    {{\"word\": \"word in {target_language}\", \"meaning\": \"Turkish meaning\", \"level\": \"CEFR level of word\"}}\n"
+                    "  ],\n"
+                    "  \"exercises\": " + json.dumps(json_exercise_schema) + "\n"
+                    "}\n\n"
+                    f"Generate exactly 5 vocabulary words from the text. "
+                    f"Include only the requested exercises in the 'exercises' object:\n{exercise_req_text}"
                 )
                 
                 user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {konu if konu else 'General topics suitable for this level'}."
 
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
+                    # OpenAI'a zorla JSON formatında çıktı vermesini söylüyoruz:
+                    response_format={"type": "json_object"},
                     messages=[
                         {"role": "system", "content": system_prompt},
                         {"role": "user", "content": user_prompt}
@@ -99,45 +110,64 @@ if api_key:
                     max_completion_tokens=1500
                 )
                 
-                generated_text = response.choices[0].message.content
-                st.session_state['text_result'] = generated_text
+                # Gelen ham string'i Python sözlüğüne (dictionary) çevirip session_state'e kaydediyoruz
+                raw_json_string = response.choices[0].message.content
+                st.session_state['json_data'] = json.loads(raw_json_string)
 
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
 
-    # 5. Sonuçların Ekrana Basılması ve Ek Özellikler
-    if 'text_result' in st.session_state:
+    # 5. Sonuçların Ekrana Basılması (Sprint 1 Kilometre Taşı)
+    if 'json_data' in st.session_state:
+        data = st.session_state['json_data']
+        
         st.write("---")
-        st.markdown("### 📖 Generated Content")
         
-        # İçeriği temiz bir kutu içinde gösteriyoruz
-        st.info(st.session_state['text_result'])
+        # JSON'dan gelen Başlık ve Metin
+        st.subheader(f"📖 {data.get('title', 'Reading Text')}")
+        st.write(data.get('text', ''))
         
+        st.write("---")
+        
+        # JSON'dan gelen Kelimeler
+        st.subheader("🔑 Vocabulary")
+        for item in data.get('vocabulary', []):
+            st.markdown(f"**{item.get('word')}** ({item.get('level', 'N/A')}) $\rightarrow$ {item.get('meaning')}")
+            
+        st.write("---")
+        
+        # JSON'dan gelen Egzersiz Yapısı (Geliştirici modu için ham veri çıktısı dahil)
+        st.subheader("🛠️ Exercises (Loaded from JSON)")
+        exercises = data.get('exercises', {})
+        
+        if "true_false" in exercises:
+            st.markdown("#### True / False Statements")
+            for tf in exercises["true_false"]:
+                st.write(f"- {tf.get('statement')}")
+                
+        if "multiple_choice" in exercises:
+            st.markdown("#### Multiple Choice Questions")
+            for mc in exercises["multiple_choice"]:
+                st.write(f"**Question:** {mc.get('question')}")
+                st.write(f"Options: {', '.join(mc.get('options', []))}")
+                
+        if "open_ended" in exercises:
+            st.markdown("#### Open-ended Writing Prompt")
+            st.write(exercises["open_ended"])
+            
         st.write("---")
         st.markdown("### 🔊 Listening Practice (Audio)")
         
         if st.button("Speak Text (TTS) 🎧"):
             with st.spinner("Generating audio file..."):
                 try:
-                    full_text = st.session_state['text_result']
-                    text_to_speak = full_text.split("---")[0] # Sadece ana metni seslendir, egzersizleri okuma
-                    
+                    text_to_speak = data.get('text', '')
                     tts_response = client.audio.speech.create(
                         model="tts-1",
                         voice="alloy",
                         input=text_to_speak
                     )
-                    
                     audio_data = tts_response.read()
                     st.audio(audio_data, format="audio/mp3")
-                    
                 except Exception as audio_err:
                     st.error(f"Audio Generation Error: {audio_err}")
-                    
-        # İndirme Butonu
-        st.download_button(
-            label="📄 Download Text (.txt)",
-            data=st.session_state['text_result'],
-            file_name=f"{target_language.lower()}_{seviye}.txt",
-            mime="text/plain"
-        )
