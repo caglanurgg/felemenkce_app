@@ -6,6 +6,16 @@ import json
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌍", layout="centered")
 
+st.markdown("""
+    <style>
+    /* GitHub simgesini, Share butonunu ve üst bar elemanlarını tamamen gizler */
+    #MainMenu {visibility: hidden;}
+    footer {visibility: hidden;}
+    header {visibility: hidden;}
+    .stAppDeployButton {display:none !important;}
+    </style>
+""", unsafe_allow_html=True)
+
 # Kaydedilen kelimeler için session_state (hafıza) başlatma
 if 'saved_words' not in st.session_state:
     st.session_state['saved_words'] = []
@@ -69,18 +79,19 @@ if api_key:
         
         with st.spinner(f"Generating {target_language} data structure..."):
             try:
+                # Kullanıcının seçtiği egzersizleri prompta ve JSON şemasına dikte ediyoruz
                 exercise_requirements = []
                 json_exercise_schema = {}
                 
                 if show_tf:
-                    exercise_requirements.append("- true_false: 3 statements based on the text, each having 'statement' (string) and 'correct_answer' (boolean: true/false).")
-                    json_exercise_schema["true_false"] = [{"statement": "example", "correct_answer": True}]
+                    exercise_requirements.append("- true_false: 3 statements based on the text. Each statement MUST have 'statement' (string) and 'correct_answer' (boolean: true or false).")
+                    json_exercise_schema["true_false"] = [{"statement": "example statement", "correct_answer": True}]
                 if show_mc:
-                    exercise_requirements.append("- multiple_choice: 3 questions, each having 'question' (string), 'options' (array of 3 strings), and 'correct_option' (string: A, B, or C).")
-                    json_exercise_schema["multiple_choice"] = [{"question": "example", "options": ["A", "B", "C"], "correct_option": "B"}]
+                    exercise_requirements.append("- multiple_choice: 3 questions. Each question MUST have 'question' (string), 'options' (array of 3 short strings), and 'correct_option' (string: exactly 'A', 'B', or 'C').")
+                    json_exercise_schema["multiple_choice"] = [{"question": "example question", "options": ["Option A", "Option B", "Option C"], "correct_option": "B"}]
                 if show_writing:
                     exercise_requirements.append("- open_ended: 1 writing prompt string asking the user to write a short paragraph related to the text.")
-                    json_exercise_schema["open_ended"] = "example writing prompt prompt here"
+                    json_exercise_schema["open_ended"] = "example writing prompt here"
 
                 exercise_req_text = "\n".join(exercise_requirements)
 
@@ -114,6 +125,9 @@ if api_key:
                 
                 raw_json_string = response.choices[0].message.content
                 st.session_state['json_data'] = json.loads(raw_json_string)
+                # Yeni metin üretildiğinde eski kullanıcı cevaplarını temizle
+                if 'user_answers' in st.session_state:
+                    del st.session_state['user_answers']
 
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
@@ -130,47 +144,104 @@ if api_key:
         
         st.write("---")
         
-        # 🔑 Akıllı Kelime Asistanı (Sprint 2: st.expander ve Kelime Kaydetme)
+        # 🔑 Akıllı Kelime Asistanı
         st.subheader("✨ Smart Reading Assistant")
         st.markdown("*Click a word below to explore it and test your memory:*")
         
         for idx, item in enumerate(data.get('vocabulary', [])):
             word_key = item.get('word')
-            # Benzersiz buton id'leri oluşturmak için idx kullanıyoruz
             with st.expander(f"▼ {word_key} ({item.get('level', 'N/A')})"):
                 st.write(f"**🇹🇷 Meaning:** {item.get('meaning')}")
                 st.write(f"**🔊 Pronunciation:** *{item.get('pronunciation', 'N/A')}*")
                 st.write(f"**📝 Example:** {item.get('example', 'No example provided.')}")
                 
-                # Kelime daha önce kaydedilmediyse kaydetme butonu göster
                 if word_key not in st.session_state['saved_words']:
                     if st.button(f"⭐ Save '{word_key}'", key=f"save_{idx}"):
                         st.session_state['saved_words'].append(word_key)
-                        st.rerun() # Sayfayı tazeleyip listeyi güncellemesi için
+                        st.rerun()
                 else:
                     st.success(f"✅ '{word_key}' is saved to your vocabulary pool!")
             
         st.write("---")
         
-        # Egzersiz Yapısı
-        st.subheader("🛠️ Exercises")
+        # 🛠️ İnteraktif Egzersiz Yapısı (Kullanıcının Seçim Yapabileceği Alan)
+        st.subheader("✍️ Interactive Exercises")
         exercises = data.get('exercises', {})
         
-        if "true_false" in exercises:
-            st.markdown("#### True / False Statements")
-            for tf in exercises["true_false"]:
-                st.write(f"- {tf.get('statement')}")
-                
-        if "multiple_choice" in exercises:
-            st.markdown("#### Multiple Choice Questions")
-            for mc in exercises["multiple_choice"]:
-                st.write(f"**Question:** {mc.get('question')}")
-                st.write(f"Options: {', '.join(mc.get('options', []))}")
-                
-        if "open_ended" in exercises:
-            st.markdown("#### Open-ended Writing Prompt")
-            st.write(exercises["open_ended"])
+        # Form kullanarak sayfayı her tıklamada yukarı atmaktan kurtarıyoruz
+        with St.form("exercise_form"):
+            user_tf_answers = {}
+            user_mc_answers = {}
+            user_open_text = ""
+
+            if "true_false" in exercises:
+                st.markdown("### 📋 True / False Statements")
+                for i, tf in enumerate(exercises["true_false"]):
+                    st.write(f"**{i+1}.** {tf.get('statement')}")
+                    # Radyo butonları ile seçim yaptırıyoruz
+                    ans = st.radio("Your Answer:", ["Not Answered", "True", "False"], key=f"tf_radio_{i}", horizontal=True)
+                    user_tf_answers[i] = ans
+                st.write("---")
+                    
+            if "multiple_choice" in exercises:
+                st.markdown("### ❓ Reading Comprehension")
+                for i, mc in enumerate(exercises["multiple_choice"]):
+                    st.write(f"**Q{i+1}:** {mc.get('question')}")
+                    # Seçenekleri yan yana veya alt alta şıkça gösteriyoruz
+                    options_list = mc.get('options', [])
+                    ans = st.radio("Choose the correct option:", ["Not Answered"] + options_list, key=f"mc_radio_{i}")
+                    user_mc_answers[i] = ans
+                st.write("---")
+
+            if "open_ended" in exercises:
+                st.markdown("### 📝 Open-ended Writing Prompt")
+                st.write(exercises["open_ended"])
+                user_open_text = st.text_area("Write your response here:", placeholder="Type your answer in the target language...", key="open_text_area")
+                st.write("---")
+
+            # Cevapları Kontrol Et Butonu
+            submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
+
+        # Butona basıldığında sonuç değerlendirmesini ekrana basıyoruz
+        if submit_answers:
+            st.markdown("### 📊 Evaluation Results")
             
+            if "true_false" in exercises:
+                st.markdown("#### True / False Evaluation:")
+                for i, tf in enumerate(exercises["true_false"]):
+                    correct = tf.get('correct_answer') 
+                    user_ans_str = user_tf_answers[i]
+                    
+                    if user_ans_str == "Not Answered":
+                        st.warning(f"Statement {i+1}: Not Answered 🟡")
+                    else:
+                        user_bool = True if user_ans_str == "True" else False
+                        if user_bool == correct:
+                            st.success(f"Statement {i+1}: Correct! ✅")
+                        else:
+                            st.error(f"Statement {i+1}: Incorrect ❌ (Correct Answer: {correct})")
+
+            if "multiple_choice" in exercises:
+                st.markdown("#### Multiple Choice Evaluation:")
+                for i, mc in enumerate(exercises["multiple_choice"]):
+                    correct_opt = mc.get('correct_option') 
+                    user_ans_str = user_mc_answers[i]
+                    
+                    if user_ans_str == "Not Answered":
+                        st.warning(f"Question {i+1}: Not Answered 🟡")
+                    else:
+                        if user_ans_str.startswith("A") and correct_opt == "A":
+                            st.success(f"Question {i+1}: Correct! ✅")
+                        elif user_ans_str.startswith("B") and correct_opt == "B":
+                            st.success(f"Question {i+1}: Correct! ✅")
+                        elif user_ans_str.startswith("C") and correct_opt == "C":
+                            st.success(f"Question {i+1}: Correct! ✅")
+                        else:
+                            st.error(f"Question {i+1}: Incorrect ❌ (Correct Option: {correct_opt})")
+
+            if "open_ended" in exercises and user_open_text:
+                st.info("📝 Your open-ended writing response has been saved. Great effort practicing!")
+
         st.write("---")
         st.markdown("### 🔊 Listening Practice (Audio)")
         
@@ -191,7 +262,6 @@ if api_key:
     # ⭐ Yan Panel (Sidebar): Kaydedilen Kelimeler Listesi
     if st.session_state['saved_words']:
         st.sidebar.markdown("### ⭐ Saved Words Pool")
-        st.sidebar.markdown("These words are saved in your current session memory:")
         for saved_w in st.session_state['saved_words']:
             st.sidebar.write(f"- {saved_w}")
         
