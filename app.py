@@ -6,6 +6,10 @@ import json
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌍", layout="centered")
 
+# Kaydedilen kelimeler için session_state (hafıza) başlatma
+if 'saved_words' not in st.session_state:
+    st.session_state['saved_words'] = []
+
 # CSS ile Görsel Düzenleme
 st.markdown("""
     <style>
@@ -65,7 +69,6 @@ if api_key:
         
         with st.spinner(f"Generating {target_language} data structure..."):
             try:
-                # Kullanıcının seçtiği egzersizleri prompta ve JSON şemasına dikte ediyoruz
                 exercise_requirements = []
                 json_exercise_schema = {}
                 
@@ -88,7 +91,7 @@ if api_key:
                     "  \"title\": \"Title of the reading text\",\n"
                     f"  \"text\": \"The complete reading text generated in {target_language}\",\n"
                     "  \"vocabulary\": [\n"
-                    f"    {{\"word\": \"word in {target_language}\", \"meaning\": \"Turkish meaning\", \"level\": \"CEFR level of word\"}}\n"
+                    f"    {{\"word\": \"word in {target_language}\", \"meaning\": \"Turkish meaning\", \"level\": \"CEFR level of word\", \"pronunciation\": \"easy phonetic guide/spelling for pronunciation\", \"example\": \"one short example sentence using this word in {target_language}\"}}\n"
                     "  ],\n"
                     "  \"exercises\": " + json.dumps(json_exercise_schema) + "\n"
                     "}\n\n"
@@ -100,7 +103,6 @@ if api_key:
 
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
-                    # OpenAI'a zorla JSON formatında çıktı vermesini söylüyoruz:
                     response_format={"type": "json_object"},
                     messages=[
                         {"role": "system", "content": system_prompt},
@@ -110,34 +112,48 @@ if api_key:
                     max_completion_tokens=1500
                 )
                 
-                # Gelen ham string'i Python sözlüğüne (dictionary) çevirip session_state'e kaydediyoruz
                 raw_json_string = response.choices[0].message.content
                 st.session_state['json_data'] = json.loads(raw_json_string)
 
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
 
-    # 5. Sonuçların Ekrana Basılması (Sprint 1 Kilometre Taşı)
+    # 5. Sonuçların Ekrana Basılması
     if 'json_data' in st.session_state:
         data = st.session_state['json_data']
         
         st.write("---")
         
-        # JSON'dan gelen Başlık ve Metin
+        # Başlık ve Metin
         st.subheader(f"📖 {data.get('title', 'Reading Text')}")
         st.write(data.get('text', ''))
         
         st.write("---")
         
-        # JSON'dan gelen Kelimeler
-        st.subheader("🔑 Vocabulary")
-        for item in data.get('vocabulary', []):
-            st.markdown(f"**{item.get('word')}** ({item.get('level', 'N/A')}) $\rightarrow$ {item.get('meaning')}")
+        # 🔑 Akıllı Kelime Asistanı (Sprint 2: st.expander ve Kelime Kaydetme)
+        st.subheader("✨ Smart Reading Assistant")
+        st.markdown("*Click a word below to explore it and test your memory:*")
+        
+        for idx, item in enumerate(data.get('vocabulary', [])):
+            word_key = item.get('word')
+            # Benzersiz buton id'leri oluşturmak için idx kullanıyoruz
+            with st.expander(f"▼ {word_key} ({item.get('level', 'N/A')})"):
+                st.write(f"**🇹🇷 Meaning:** {item.get('meaning')}")
+                st.write(f"**🔊 Pronunciation:** *{item.get('pronunciation', 'N/A')}*")
+                st.write(f"**📝 Example:** {item.get('example', 'No example provided.')}")
+                
+                # Kelime daha önce kaydedilmediyse kaydetme butonu göster
+                if word_key not in st.session_state['saved_words']:
+                    if st.button(f"⭐ Save '{word_key}'", key=f"save_{idx}"):
+                        st.session_state['saved_words'].append(word_key)
+                        st.rerun() # Sayfayı tazeleyip listeyi güncellemesi için
+                else:
+                    st.success(f"✅ '{word_key}' is saved to your vocabulary pool!")
             
         st.write("---")
         
-        # JSON'dan gelen Egzersiz Yapısı (Geliştirici modu için ham veri çıktısı dahil)
-        st.subheader("🛠️ Exercises (Loaded from JSON)")
+        # Egzersiz Yapısı
+        st.subheader("🛠️ Exercises")
         exercises = data.get('exercises', {})
         
         if "true_false" in exercises:
@@ -171,3 +187,14 @@ if api_key:
                     st.audio(audio_data, format="audio/mp3")
                 except Exception as audio_err:
                     st.error(f"Audio Generation Error: {audio_err}")
+
+    # ⭐ Yan Panel (Sidebar): Kaydedilen Kelimeler Listesi
+    if st.session_state['saved_words']:
+        st.sidebar.markdown("### ⭐ Saved Words Pool")
+        st.sidebar.markdown("These words are saved in your current session memory:")
+        for saved_w in st.session_state['saved_words']:
+            st.sidebar.write(f"- {saved_w}")
+        
+        if st.sidebar.button("🗑️ Clear Saved Words"):
+            st.session_state['saved_words'] = []
+            st.rerun()
