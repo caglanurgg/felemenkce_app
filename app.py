@@ -5,6 +5,28 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 
+# JSON Dosya Yolu Tanımı
+HEATMAP_FILE = "heatmap.json"
+
+# Yardımcı Fonksiyonlar: Kalıcı Veri Depolama (Local JSON Persistence)
+def load_heatmap():
+    """Uygulama başlarken yerel JSON dosyasından kelime geçmişini yükler."""
+    if os.path.exists(HEATMAP_FILE):
+        try:
+            with open(HEATMAP_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return {}
+    return {}
+
+def save_heatmap(data):
+    """Kelime geçmişi her güncellendiğinde yerel JSON dosyasına kaydeder."""
+    try:
+        with open(HEATMAP_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Error saving data to local storage: {e}")
+
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="centered")
 
@@ -38,9 +60,9 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# F5 Kaybını Önlemek İçin Gelişmiş Hafıza Yapılandırması
+# F5 Kaybını Önlemek İçin Gelişmiş Hafıza Yapılandırması (Artık Başlangıçta JSON Dosyasından Okuyor)
 if 'heatmap_vocab' not in st.session_state:
-    st.session_state['heatmap_vocab'] = {}  # Örn: {"transformative": "🔴 New to me", "provoke": "🟡 I've seen this"}
+    st.session_state['heatmap_vocab'] = load_heatmap()
 
 # CSS ile Görsel Düzenleme
 st.markdown("""
@@ -213,14 +235,17 @@ if api_key:
                 with v_col1:
                     if st.button("🟢 I know this", key=f"know_{idx}"):
                         st.session_state['heatmap_vocab'][word_key] = "🟢 I know this"
+                        save_heatmap(st.session_state['heatmap_vocab'])  # Dosyaya kaydet
                         st.rerun()
                 with v_col2:
                     if st.button("🟡 I've seen this", key=f"seen_{idx}"):
                         st.session_state['heatmap_vocab'][word_key] = "🟡 I've seen this"
+                        save_heatmap(st.session_state['heatmap_vocab'])  # Dosyaya kaydet
                         st.rerun()
                 with v_col3:
                     if st.button("🔴 New to me", key=f"new_{idx}"):
                         st.session_state['heatmap_vocab'][word_key] = "🔴 New to me"
+                        save_heatmap(st.session_state['heatmap_vocab'])  # Dosyaya kaydet
                         st.rerun()
                         
         st.write("---")
@@ -296,4 +321,5 @@ if api_key:
                 
         if st.sidebar.button("🗑️ Reset All Progress"):
             st.session_state['heatmap_vocab'] = {}
+            save_heatmap({})  # Yerel JSON dosyasını da temizle
             st.rerun()
