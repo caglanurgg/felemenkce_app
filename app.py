@@ -257,7 +257,7 @@ if api_key:
         st.subheader(f"📖 {data.get('title', 'Reading Text')}")
         reading_text = data.get("text", "")
         
-        # Heatmap'te kayıtlı kelimeleri metin içinde dinamik vurgula (Öncelik sıralı)
+        # Heatmap'te kayıtlı kelimeleri metin içinde dinamik vurgula (Öncelik sıralı & Ek alabilen esnek eşleşme)
         if st.session_state['heatmap_vocab']:
             sorted_words = sorted(st.session_state['heatmap_vocab'].keys(), key=len, reverse=True)
             for word in sorted_words:
@@ -269,7 +269,10 @@ if api_key:
                 else:
                     color_class = "highlight-red"
                 
-                pattern = rf"\b({re.escape(word)})\b"
+                # Kelimenin Felemenkçe veya İngilizce gibi dillerde en az 3 harfli kısmını taban alarak esnek ek yakalama (Kök analizi)
+                root_word = word[:-2] if len(word) > 5 else word[:-1] if len(word) > 3 else word
+                pattern = rf"\b({re.escape(root_word)}[a-zA-Z]*)\b"
+                
                 reading_text = re.sub(pattern, f'<span class="{color_class}">\\1</span>', reading_text, flags=re.IGNORECASE)
                 
         st.markdown(f"<div style='line-height:1.8; font-size:1.1rem;'>{reading_text}</div>", unsafe_allow_html=True)
