@@ -193,7 +193,7 @@ if api_key:
                     GENERATION RULES:
                     1. If appropriate, naturally include and REUSE words from the '🔴 New to me' list at least twice to enforce learning.
                     2. Occasionally re-introduce words from the '🟡 I've seen this' list to spark active recall.
-                    3. Do NOT substitute standard vocabulary with words from the '🟢 I know this' list unless completely unavoidable.
+                    3. Do NOT substitute standard vocabulary with words from the '🟢 I know this' list unless completely unavailable.
                     4. Introduce AT MOST 2 completely new advanced vocabulary words that are not in the profile to control cognitive load.
                     """
                 
@@ -257,7 +257,7 @@ if api_key:
         st.subheader(f"📖 {data.get('title', 'Reading Text')}")
         reading_text = data.get("text", "")
         
-        # Heatmap'te kayıtlı kelimeleri metin içinde dinamik vurgula (Öncelik sıralı & Ek alabilen esnek eşleşme)
+        # Heatmap'te kayıtlı kelimeleri metin içinde dinamik vurgula (Öncelik sıralı & Evrensel Eşleşme)
         if st.session_state['heatmap_vocab']:
             sorted_words = sorted(st.session_state['heatmap_vocab'].keys(), key=len, reverse=True)
             for word in sorted_words:
@@ -269,9 +269,9 @@ if api_key:
                 else:
                     color_class = "highlight-red"
                 
-                # Kelimenin Felemenkçe veya İngilizce gibi dillerde en az 3 harfli kısmını taban alarak esnek ek yakalama (Kök analizi)
+                # İspanyolca/Felemenkçe gibi dillerde her türlü eki (çoğul, fiil çekimi) ve aksanlı harfi kapsayan esnek regex
                 root_word = word[:-2] if len(word) > 5 else word[:-1] if len(word) > 3 else word
-                pattern = rf"\b({re.escape(root_word)}[a-zA-Z]*)\b"
+                pattern = rf"\b({re.escape(root_word)}[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]*)\b"
                 
                 reading_text = re.sub(pattern, f'<span class="{color_class}">\\1</span>', reading_text, flags=re.IGNORECASE)
                 
