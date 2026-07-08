@@ -79,12 +79,15 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Gelişmiş Hafıza Yapılandırması (Açılışta Otomatik Yükleme Adımları)
+# Gelişmiş Hafıza Yapılandırması (Açılışta Otomatik Yükleme)
 if 'heatmap_vocab' not in st.session_state:
     st.session_state['heatmap_vocab'] = load_heatmap()
 
-if 'json_data' not in st.session_state:
-    st.session_state['json_data'] = load_reading_session()
+if 'saved_session' not in st.session_state:
+    st.session_state['saved_session'] = load_reading_session()
+
+# Kolay yönetim için session verisini kısaltma olarak bağlayalım
+saved = st.session_state['saved_session'] if st.session_state['saved_session'] is not None else {}
 
 # CSS ile Görsel Düzenleme
 st.markdown("""
@@ -108,36 +111,46 @@ if not api_key:
 if api_key:
     client = OpenAI(api_key=api_key)
     
-    # Dil Seçim Kutusu
+    # Dil Seçim Kutusu (Kayıttan yükleme korumalı)
+    lang_options = ["Nederlands", "English", "French", "Korean", "Spanish"]
+    default_lang_idx = lang_options.index(saved["ui_target_language"]) if "ui_target_language" in saved else 0
+    
     target_language = st.selectbox(
         "Select the language you want to learn:",
-        ["Nederlands", "English", "French", "Korean", "Spanish"]
+        lang_options,
+        index=default_lang_idx
     )
     st.write("")
     
-    # 3. Form Elemanları
+    # 3. Form Elemanları (Kayıttan yükleme korumalı)
     col1, col2, col3, col4 = st.columns(4)
     
+    level_options = ["A1", "A2", "B1", "B2", "C1"]
+    default_level_idx = level_options.index(saved["ui_seviye"]) if "ui_seviye" in saved else 0
+    
+    tone_options = ["Casual", "Friendly", "Formal", "Academic"]
+    default_tone_idx = tone_options.index(saved["ui_ton"]) if "ui_ton" in saved else 0
+    
     with col1:
-        seviye = st.selectbox("CEFR Level", ["A1", "A2", "B1", "B2", "C1"])
+        seviye = st.selectbox("CEFR Level", level_options, index=default_level_idx)
     with col2:
-        ton = st.selectbox("Text Tone", ["Casual", "Friendly", "Formal", "Academic"])
+        ton = st.selectbox("Text Tone", tone_options, index=default_tone_idx)
     with col3:
-        kelime_sayisi = st.number_input("Word Count", min_value=30, max_value=500, value=100, step=10)
+        kelime_sayisi = st.number_input("Word Count", min_value=30, max_value=500, value=saved.get("ui_kelime_sayisi", 100), step=10)
     with col4:
-        konu = st.text_input("Topic", value="", placeholder="e.g., Daily Routine, Hobbies, Travel...")
+        konu = st.text_input("Topic", value=saved.get("ui_konu", ""), placeholder="e.g., Daily Routine, Hobbies, Travel...")
         
     st.write("")
     
-    # Egzersiz Türü Seçimleri
+    # Egzersiz Türü Seçimleri (Kayıttan yükleme korumalı)
     st.markdown("### 🛠️ Select Exercise Types")
     ex_col1, ex_col2, ex_col3 = st.columns(3)
     with ex_col1:
-        show_tf = st.checkbox("True / False", value=True)
+        show_tf = st.checkbox("True / False", value=saved.get("ui_show_tf", True))
     with ex_col2:
-        show_mc = st.checkbox("Reading Comprehension", value=True)
+        show_mc = st.checkbox("Reading Comprehension", value=saved.get("ui_show_mc", True))
     with ex_col3:
-        show_writing = st.checkbox("Open-ended Writing", value=False)
+        show_writing = st.checkbox("Open-ended Writing", value=saved.get("ui_show_writing", False))
         
     st.write("")
     
@@ -199,16 +212,29 @@ if api_key:
                 raw_json_string = response.choices[0].message.content
                 parsed_data = json.loads(raw_json_string)
                 
-                # State güncellemesi ve Otomatik Kayıt Adımı
-                st.session_state['json_data'] = parsed_data
-                save_reading_session(parsed_data)
+                # Hem AI verilerini hem de UI Seçim kutularını tek bir pakette birleştirip kaydediyoruz
+                session_payload = {
+                    "api_data": parsed_data,
+                    "ui_target_language": target_language,
+                    "ui_seviye": seviye,
+                    "ui_ton": ton,
+                    "ui_kelime_sayisi": kelime_sayisi,
+                    "ui_konu": konu,
+                    "ui_show_tf": show_tf,
+                    "ui_show_mc": show_mc,
+                    "ui_show_writing": show_writing
+                }
+                
+                st.session_state['saved_session'] = session_payload
+                save_reading_session(session_payload)
+                st.rerun()
                 
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
                 
     # 5. Sonuçların Ekrana Basılması
-    if st.session_state['json_data'] is not None:
-        data = st.session_state['json_data']
+    if st.session_state['saved_session'] is not None:
+        data = st.session_state['saved_session']["api_data"]
         st.write("---")
         
         # Başlık ve Metin
@@ -346,7 +372,7 @@ if api_key:
                 
         if st.sidebar.button("🗑️ Reset All Progress"):
             st.session_state['heatmap_vocab'] = {}
-            st.session_state['json_data'] = None
+            st.session_state['saved_session'] = None
             save_heatmap({})
             if os.path.exists(SESSION_FILE):
                 os.remove(SESSION_FILE)
