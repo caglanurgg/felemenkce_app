@@ -34,7 +34,6 @@ def load_reading_session():
         try:
             with open(SESSION_FILE, "r", encoding="utf-8") as f:
                 content = json.load(f)
-                # Geriye dönük uyumluluk kontrolü: Eğer dosya eski formattaysa veya içi boşsa None döndür
                 if isinstance(content, dict) and "api_data" in content:
                     return content
                 return None
@@ -177,12 +176,26 @@ if api_key:
                     
                 exercise_req_text = "\n".join(exercise_requirements)
                 
-                # Hafızadaki zor ve orta kelimeleri gönderiyoruz
-                memory_instruction = ""
+                # --- Adaptive Learning Engine v1 Mimarisi ---
+                adaptive_instruction = ""
                 if st.session_state['heatmap_vocab']:
-                    review_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "New to me" in status or "I've seen this" in status]
-                    if review_words:
-                        memory_instruction = f"\nCRITICAL: The user is struggling with or studying these specific words: {review_words}. You MUST include them naturally in the text if appropriate."
+                    known_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "I know this" in status]
+                    seen_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "I've seen this" in status]
+                    new_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "New to me" in status]
+                    
+                    adaptive_instruction = f"""
+                    \nCRITICAL - LEARNER PROFILE ADAPTATION:
+                    The user has a personalized vocabulary history tracking profile:
+                    - 🔴 New to me (Struggling/New): {new_words}
+                    - 🟡 I've seen this (In-progress): {seen_words}
+                    - 🟢 I know this (Mastered): {known_words}
+                    
+                    GENERATION RULES:
+                    1. If appropriate, naturally include and REUSE words from the '🔴 New to me' list at least twice to enforce learning.
+                    2. Occasionally re-introduce words from the '🟡 I've seen this' list to spark active recall.
+                    3. Do NOT substitute standard vocabulary with words from the '🟢 I know this' list unless completely unavoidable.
+                    4. Introduce AT MOST 2 completely new advanced vocabulary words that are not in the profile to control cognitive load.
+                    """
                 
                 system_prompt = (
                     f"You are an expert {target_language} language teacher that outputs raw JSON data.\n"
@@ -197,7 +210,7 @@ if api_key:
                     "}\n\n"
                     "Generate exactly 5 vocabulary words from the text. "
                     f"Include only the requested exercises in the 'exercises' object:\n{exercise_req_text}"
-                    f"{memory_instruction}"
+                    f"{adaptive_instruction}"
                 )
                 
                 user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {konu}"
@@ -216,7 +229,6 @@ if api_key:
                 raw_json_string = response.choices[0].message.content
                 parsed_data = json.loads(raw_json_string)
                 
-                # Hem AI verilerini hem de UI Seçim kutularını tek bir pakette birleştirip kaydediyoruz
                 session_payload = {
                     "api_data": parsed_data,
                     "ui_target_language": target_language,
@@ -236,7 +248,7 @@ if api_key:
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
                 
-    # 5. Sonuçların Ekrana Basılması (Korumalı Yapı)
+    # 5. Sonuçların Ekrana Basılması
     if st.session_state['saved_session'] is not None and "api_data" in st.session_state['saved_session']:
         data = st.session_state['saved_session']["api_data"]
         st.write("---")
@@ -331,7 +343,25 @@ if api_key:
                     user_mc_answers[i] = ans
                 st.write("---")
                 
-                st.form_submit_button("Check Answers 🎯", use_container_width=True)
+            submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
+            
+        if submit_answers:
+            st.markdown("### 📊 Evaluation Results")
+            
+            if "true_false" in exercises and exercises["true_false"]:
+                for i, tf in enumerate(exercises["true_false"]):
+                    correct = tf.get('correct_answer')
+                    ans = user_tf_answers[i]
+                    if ans != "Not Answered":
+                        user_bool = True if ans == "True" else False
+                        st.write(f"Statement {i+1}: {'✅ Correct!' if user_bool == correct else '❌ Incorrect'}")
+                        
+            if "multiple_choice" in exercises and exercises["multiple_choice"]:
+                for i, mc in enumerate(exercises["multiple_choice"]):
+                    correct_opt = mc.get('correct_answer')
+                    ans = user_mc_answers[i]
+                    if ans != "Not Answered":
+                        st.write(f"Question {i+1}: {'✅ Correct!' if ans.startswith(correct_opt) or correct_opt in ans else '❌ Incorrect'}")
 
     # Yan Panel (Sidebar): Canlı Isı Haritası ve Hafıza İstatistikleri
     if st.session_state['heatmap_vocab']:
