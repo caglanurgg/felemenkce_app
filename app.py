@@ -33,7 +33,11 @@ def load_reading_session():
     if os.path.exists(SESSION_FILE):
         try:
             with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
+                content = json.load(f)
+                # Geriye dönük uyumluluk kontrolü: Eğer dosya eski formattaysa veya içi boşsa None döndür
+                if isinstance(content, dict) and "api_data" in content:
+                    return content
+                return None
         except Exception:
             return None
     return None
@@ -86,7 +90,7 @@ if 'heatmap_vocab' not in st.session_state:
 if 'saved_session' not in st.session_state:
     st.session_state['saved_session'] = load_reading_session()
 
-# Kolay yönetim için session verisini kısaltma olarak bağlayalım
+# Güvenli yönetim için session verisini kısaltma olarak bağlayalım
 saved = st.session_state['saved_session'] if st.session_state['saved_session'] is not None else {}
 
 # CSS ile Görsel Düzenleme
@@ -232,8 +236,8 @@ if api_key:
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
                 
-    # 5. Sonuçların Ekrana Basılması
-    if st.session_state['saved_session'] is not None:
+    # 5. Sonuçların Ekrana Basılması (Korumalı Yapı)
+    if st.session_state['saved_session'] is not None and "api_data" in st.session_state['saved_session']:
         data = st.session_state['saved_session']["api_data"]
         st.write("---")
         
@@ -327,25 +331,7 @@ if api_key:
                     user_mc_answers[i] = ans
                 st.write("---")
                 
-            submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
-            
-        if submit_answers:
-            st.markdown("### 📊 Evaluation Results")
-            
-            if "true_false" in exercises and exercises["true_false"]:
-                for i, tf in enumerate(exercises["true_false"]):
-                    correct = tf.get('correct_answer')
-                    ans = user_tf_answers[i]
-                    if ans != "Not Answered":
-                        user_bool = True if ans == "True" else False
-                        st.write(f"Statement {i+1}: {'✅ Correct!' if user_bool == correct else '❌ Incorrect'}")
-                        
-            if "multiple_choice" in exercises and exercises["multiple_choice"]:
-                for i, mc in enumerate(exercises["multiple_choice"]):
-                    correct_opt = mc.get('correct_answer')
-                    ans = user_mc_answers[i]
-                    if ans != "Not Answered":
-                        st.write(f"Question {i+1}: {'✅ Correct!' if ans.startswith(correct_opt) or correct_opt in ans else '❌ Incorrect'}")
+                st.form_submit_button("Check Answers 🎯", use_container_width=True)
 
     # Yan Panel (Sidebar): Canlı Isı Haritası ve Hafıza İstatistikleri
     if st.session_state['heatmap_vocab']:
