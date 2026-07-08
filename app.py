@@ -5,8 +5,9 @@ from datetime import datetime
 import streamlit as st
 from openai import OpenAI
 
-# JSON Dosya Yolu Tanımı
+# JSON Dosya Yolları Tanımı
 HEATMAP_FILE = "heatmap.json"
+SESSION_FILE = "reading_session.json"
 
 # Yardımcı Fonksiyonlar: Kalıcı Veri Depolama (Local JSON Persistence)
 def load_heatmap():
@@ -25,7 +26,25 @@ def save_heatmap(data):
         with open(HEATMAP_FILE, "w", encoding="utf-8") as f:
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
-        st.error(f"Error saving data to local storage: {e}")
+        st.error(f"Error saving heatmap to local storage: {e}")
+
+def load_reading_session():
+    """Uygulama başlarken son üretilen okuma oturumunu yükler."""
+    if os.path.exists(SESSION_FILE):
+        try:
+            with open(SESSION_FILE, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except Exception:
+            return None
+    return None
+
+def save_reading_session(data):
+    """Yeni bir metin üretildiğinde oturum verilerini JSON dosyasına kaydeder."""
+    try:
+        with open(SESSION_FILE, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=4)
+    except Exception as e:
+        st.error(f"Error saving reading session to local storage: {e}")
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="centered")
@@ -60,9 +79,12 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# F5 Kaybını Önlemek İçin Gelişmiş Hafıza Yapılandırması (Artık Başlangıçta JSON Dosyasından Okuyor)
+# Gelişmiş Hafıza Yapılandırması (Açılışta Otomatik Yükleme Adımları)
 if 'heatmap_vocab' not in st.session_state:
     st.session_state['heatmap_vocab'] = load_heatmap()
+
+if 'json_data' not in st.session_state:
+    st.session_state['json_data'] = load_reading_session()
 
 # CSS ile Görsel Düzenleme
 st.markdown("""
@@ -138,7 +160,7 @@ if api_key:
                     
                 exercise_req_text = "\n".join(exercise_requirements)
                 
-                # Hafızadaki zor ve orta kelimeleri (Yani "New to me" ve "I've seen this" olanları) gönderiyoruz
+                # Hafızadaki zor ve orta kelimeleri gönderiyoruz
                 memory_instruction = ""
                 if st.session_state['heatmap_vocab']:
                     review_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "New to me" in status or "I've seen this" in status]
@@ -175,13 +197,17 @@ if api_key:
                 )
                 
                 raw_json_string = response.choices[0].message.content
-                st.session_state['json_data'] = json.loads(raw_json_string)
+                parsed_data = json.loads(raw_json_string)
+                
+                # State güncellemesi ve Otomatik Kayıt Adımı
+                st.session_state['json_data'] = parsed_data
+                save_reading_session(parsed_data)
                 
             except Exception as e:
                 st.error(f"OpenAI API Error: {e}")
                 
     # 5. Sonuçların Ekrana Basılması
-    if 'json_data' in st.session_state:
+    if st.session_state['json_data'] is not None:
         data = st.session_state['json_data']
         st.write("---")
         
@@ -235,17 +261,17 @@ if api_key:
                 with v_col1:
                     if st.button("🟢 I know this", key=f"know_{idx}"):
                         st.session_state['heatmap_vocab'][word_key] = "🟢 I know this"
-                        save_heatmap(st.session_state['heatmap_vocab'])  # Dosyaya kaydet
+                        save_heatmap(st.session_state['heatmap_vocab'])
                         st.rerun()
                 with v_col2:
                     if st.button("🟡 I've seen this", key=f"seen_{idx}"):
                         st.session_state['heatmap_vocab'][word_key] = "🟡 I've seen this"
-                        save_heatmap(st.session_state['heatmap_vocab'])  # Dosyaya kaydet
+                        save_heatmap(st.session_state['heatmap_vocab'])
                         st.rerun()
                 with v_col3:
                     if st.button("🔴 New to me", key=f"new_{idx}"):
                         st.session_state['heatmap_vocab'][word_key] = "🔴 New to me"
-                        save_heatmap(st.session_state['heatmap_vocab'])  # Dosyaya kaydet
+                        save_heatmap(st.session_state['heatmap_vocab'])
                         st.rerun()
                         
         st.write("---")
@@ -257,7 +283,6 @@ if api_key:
         with st.form("exercise_form"):
             user_tf_answers = {}
             user_mc_answers = {}
-            user_open_text = ""
             
             if "true_false" in exercises and exercises["true_false"]:
                 st.markdown("### 📄 True / False Statements")
@@ -321,5 +346,8 @@ if api_key:
                 
         if st.sidebar.button("🗑️ Reset All Progress"):
             st.session_state['heatmap_vocab'] = {}
-            save_heatmap({})  # Yerel JSON dosyasını da temizle
+            st.session_state['json_data'] = None
+            save_heatmap({})
+            if os.path.exists(SESSION_FILE):
+                os.remove(SESSION_FILE)
             st.rerun()
