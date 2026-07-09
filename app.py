@@ -3,51 +3,8 @@ import os
 import re
 from datetime import datetime
 import streamlit as st
-from openai import OpenAI
-
-# JSON Dosya Yolları Tanımı
-HEATMAP_FILE = "heatmap.json"
-SESSION_FILE = "reading_session.json"
-
-# Yardımcı Fonksiyonlar: Kalıcı Veri Depolama (Local JSON Persistence)
-def load_heatmap():
-    """Uygulama başlarken yerel JSON dosyasından kelime geçmişini yükler."""
-    if os.path.exists(HEATMAP_FILE):
-        try:
-            with open(HEATMAP_FILE, "r", encoding="utf-8") as f:
-                return json.load(f)
-        except Exception:
-            return {}
-    return {}
-
-def save_heatmap(data):
-    """Kelime geçmişi her güncellendiğinde yerel JSON dosyasına kaydeder."""
-    try:
-        with open(HEATMAP_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        st.error(f"Error saving heatmap to local storage: {e}")
-
-def load_reading_session():
-    """Uygulama başlarken son üretilen okuma oturumunu yükler."""
-    if os.path.exists(SESSION_FILE):
-        try:
-            with open(SESSION_FILE, "r", encoding="utf-8") as f:
-                content = json.load(f)
-                if isinstance(content, dict) and "api_data" in content:
-                    return content
-                return None
-        except Exception:
-            return None
-    return None
-
-def save_reading_session(data):
-    """Yeni bir metin üretildiğinde oturum verilerini JSON dosyasına kaydeder."""
-    try:
-        with open(SESSION_FILE, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=4)
-    except Exception as e:
-        st.error(f"Error saving reading session to local storage: {e}")
+from highlighter import highlight_text
+from ai_engine import generate_reading_package
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="centered")
@@ -160,58 +117,38 @@ if api_key:
     # 4. Üretim Butonu
     if st.button("Generate Text & Exercises 🚀", use_container_width=True):
         with st.spinner(f"Generating {target_language} data structure..."):
-            try:
-                exercise_requirements = []
-                json_exercise_schema = {}
+            
+            # Egzersiz ayarlarını paket halinde hazırlıyoruz
+            exercise_settings = {
+                "show_tf": show_tf,
+                "show_mc": show_mc,
+                "show_writing": show_writing
+            }
+            
+            # Beyin modülümüzü çağırıyoruz (Success, Data, Error yapısı)
+            success, parsed_data, error_msg = generate_reading_package(
+                client, target_language, seviye, ton, kelime_sayisi, konu, 
+                st.session_state['heatmap_vocab'], exercise_settings
+            )
+            
+            if success:
+                session_payload = {
+                    "api_data": parsed_data,
+                    "ui_target_language": target_language,
+                    "ui_seviye": seviye,
+                    "ui_ton": ton,
+                    "ui_kelime_sayisi": kelime_sayisi,
+                    "ui_konu": konu,
+                    "ui_show_tf": show_tf,
+                    "ui_show_mc": show_mc,
+                    "ui_show_writing": show_writing
+                }
                 
-                if show_tf:
-                    exercise_requirements.append("- true_false: 3 statements based on the text. Each statement MUST have 'statement' (string) and 'correct_answer' (boolean)")
-                    json_exercise_schema["true_false"] = [{"statement": "example statement", "correct_answer": True}]
-                if show_mc:
-                    exercise_requirements.append("- multiple_choice: 3 questions. Each question MUST have 'question' (string), 'options' (array of strings), and 'correct_answer' (string matching one option)")
-                    json_exercise_schema["multiple_choice"] = [{"question": "example question", "options": ["Option A", "Option B"], "correct_answer": "Option A"}]
-                if show_writing:
-                    exercise_requirements.append("- open_ended: 1 writing prompt string asking the user to write a short paragraph.")
-                    json_exercise_schema["open_ended"] = "example writing prompt here"
-                    
-                exercise_req_text = "\n".join(exercise_requirements)
-                
-                # --- Adaptive Learning Engine v1 Mimarisi ---
-                adaptive_instruction = ""
-                if st.session_state['heatmap_vocab']:
-                    known_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "I know this" in status]
-                    seen_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "I've seen this" in status]
-                    new_words = [w for w, status in st.session_state['heatmap_vocab'].items() if "New to me" in status]
-                    
-                    adaptive_instruction = f"""
-                    \nCRITICAL - LEARNER PROFILE ADAPTATION:
-                    The user has a personalized vocabulary history tracking profile:
-                    - 🔴 New to me (Struggling/New): {new_words}
-                    - 🟡 I've seen this (In-progress): {seen_words}
-                    - 🟢 I know this (Mastered): {known_words}
-                    
-                    GENERATION RULES:
-                    1. If appropriate, naturally include and REUSE words from the '🔴 New to me' list at least twice to enforce learning.
-                    2. Occasionally re-introduce words from the '🟡 I've seen this' list to spark active recall.
-                    3. Do NOT substitute standard vocabulary with words from the '🟢 I know this' list unless completely unavailable.
-                    4. Introduce AT MOST 2 completely new advanced vocabulary words that are not in the profile to control cognitive load.
-                    """
-                
-                system_prompt = (
-                    f"You are an expert {target_language} language teacher that outputs raw JSON data.\n"
-                    "You must return a valid JSON object matching this strict schema exactly:\n"
-                    "{\n"
-                    "  \"title\": \"Title of the reading text\",\n"
-                    f"  \"text\": \"The complete reading text generated in {target_language}\",\n"
-                    "  \"vocabulary\": [\n"
-                    "     {\"word\": \"word\", \"meaning\": \"Turkish meaning\", \"level\": \"CEFR level of word\", \"pronunciation\": \"IPA\", \"example\": \"sentence\"}\n"
-                    "  ],\n"
-                    "  \"exercises\": " + json.dumps(json_exercise_schema) + "\n"
-                    "}\n\n"
-                    "Generate exactly 5 vocabulary words from the text. "
-                    f"Include only the requested exercises in the 'exercises' object:\n{exercise_req_text}"
-                    f"{adaptive_instruction}"
-                )
+                st.session_state['saved_session'] = session_payload
+                save_reading_session(session_payload)
+                st.rerun()
+            else:
+                st.error(f"OpenAI API Error: {error_msg}")
                 
                 user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {konu}"
                 
@@ -257,23 +194,7 @@ if api_key:
         st.subheader(f"📖 {data.get('title', 'Reading Text')}")
         reading_text = data.get("text", "")
         
-        # Heatmap'te kayıtlı kelimeleri metin içinde dinamik vurgula (Öncelik sıralı & Evrensel Eşleşme)
-        if st.session_state['heatmap_vocab']:
-            sorted_words = sorted(st.session_state['heatmap_vocab'].keys(), key=len, reverse=True)
-            for word in sorted_words:
-                status = st.session_state['heatmap_vocab'][word]
-                if "I know this" in status:
-                    color_class = "highlight-green"
-                elif "I've seen this" in status:
-                    color_class = "highlight-yellow"
-                else:
-                    color_class = "highlight-red"
-                
-                # İspanyolca/Felemenkçe gibi dillerde her türlü eki (çoğul, fiil çekimi) ve aksanlı harfi kapsayan esnek regex
-                root_word = word[:-2] if len(word) > 5 else word[:-1] if len(word) > 3 else word
-                pattern = rf"\b({re.escape(root_word)}[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]*)\b"
-                
-                reading_text = re.sub(pattern, f'<span class="{color_class}">\\1</span>', reading_text, flags=re.IGNORECASE)
+        reading_text = highlight_text(reading_text, st.session_state['heatmap_vocab'])
                 
         st.markdown(f"<div style='line-height:1.8; font-size:1.1rem;'>{reading_text}</div>", unsafe_allow_html=True)
         st.write("---")
