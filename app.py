@@ -150,41 +150,6 @@ if api_key:
             else:
                 st.error(f"OpenAI API Error: {error_msg}")
                 
-                user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {konu}"
-                
-                response = client.chat.completions.create(
-                    model="gpt-4o-mini",
-                    response_format={"type": "json_object"},
-                    messages=[
-                        {"role": "system", "content": system_prompt},
-                        {"role": "user", "content": user_prompt}
-                    ],
-                    temperature=0.7,
-                    max_completion_tokens=1500
-                )
-                
-                raw_json_string = response.choices[0].message.content
-                parsed_data = json.loads(raw_json_string)
-                
-                session_payload = {
-                    "api_data": parsed_data,
-                    "ui_target_language": target_language,
-                    "ui_seviye": seviye,
-                    "ui_ton": ton,
-                    "ui_kelime_sayisi": kelime_sayisi,
-                    "ui_konu": konu,
-                    "ui_show_tf": show_tf,
-                    "ui_show_mc": show_mc,
-                    "ui_show_writing": show_writing
-                }
-                
-                st.session_state['saved_session'] = session_payload
-                save_reading_session(session_payload)
-                st.rerun()
-                
-            except Exception as e:
-                st.error(f"OpenAI API Error: {e}")
-                
     # 5. Sonuçların Ekrana Basılması
     if st.session_state['saved_session'] is not None and "api_data" in st.session_state['saved_session']:
         data = st.session_state['saved_session']["api_data"]
