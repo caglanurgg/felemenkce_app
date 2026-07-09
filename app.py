@@ -5,6 +5,7 @@ from datetime import datetime
 import streamlit as st
 from highlighter import highlight_text
 from ai_engine import generate_reading_package
+from storage import load_heatmap, save_heatmap, load_reading_session, save_reading_session
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="centered")
