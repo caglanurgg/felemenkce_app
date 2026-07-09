@@ -69,9 +69,6 @@ if not api_key:
     st.warning("⚠️ Please define 'OPENAI_API_KEY' in your system environment or Streamlit Secrets.")
     api_key = st.text_input("Or enter your API Key here for testing:", type="password")
 
-if api_key:
-    client = OpenAI(api_key=api_key)
-    
     # Dil Seçim Kutusu (Kayıttan yükleme korumalı)
     lang_options = ["Nederlands", "English", "French", "Korean", "Spanish"]
     default_lang_idx = lang_options.index(saved["ui_target_language"]) if "ui_target_language" in saved else 0

@@ -24,12 +24,13 @@ def build_memory_instruction(heatmap_vocab):
     4. Introduce AT MOST 2 completely new advanced vocabulary words that are not in the profile to control cognitive load.
     """
 
-def generate_reading_package(client, target_language, seviye, ton, kelime_sayisi, konu, heatmap_vocab, exercise_settings):
+def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayisi, konu, heatmap_vocab, exercise_settings):
     """
     OpenAI API ile konuşur, promptları birleştirir, JSON'ı parse eder 
      ve geriye (True/False, parsed_data, error_message) şeklinde 3'lü tuple döndürür.
     """
     try:
+        client = OpenAI(api_key=api_key)
         # Egzersiz şeması ve kurallarının dinamik inşası
         exercise_requirements = []
         json_exercise_schema = {}
