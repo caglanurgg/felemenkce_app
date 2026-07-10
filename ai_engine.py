@@ -7,14 +7,14 @@ def build_memory_instruction(heatmap_vocab):
         return ""
         
     known_words = [w for w, status in heatmap_vocab.items() if "I know this" in status]
-    skin_words = [w for w, status in heatmap_vocab.items() if "I've seen this" in status]
+    seen_words = [w for w, status in heatmap_vocab.items() if "I've seen this" in status]
     new_words = [w for w, status in heatmap_vocab.items() if "New to me" in status]
     
     return f"""
     \nCRITICAL - LEARNER PROFILE ADAPTATION:
     The user has a personalized vocabulary history tracking profile:
     - 🔴 New to me (Struggling/New): {new_words}
-    - 🟡 I've seen this (In-progress): {skin_words}
+    - 🟡 I've seen this (In-progress): {seen_words}
     - 🟢 I know this (Mastered): {known_words}
     
     GENERATION RULES:
@@ -29,6 +29,9 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
     OpenAI API ile konuşur, promptları birleştirir, JSON'ı parse eder 
      ve geriye (True/False, parsed_data, error_message) şeklinde 3'lü tuple döndürür.
     """
+    # Eğer kullanıcı konu girmediyse yapay zeka rastgele ama seviyeye uygun saçmalasın
+    final_topic = konu if konu.strip() else "General topics suitable for this level"
+
     try:
         client = OpenAI(api_key=api_key)
         # Egzersiz şeması ve kurallarının dinamik inşası
@@ -66,7 +69,7 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
         )
         
         # Mimarideki User Prompt
-        user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {konu}"
+        user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {final_topic}"
         
         # API Çağrısı
         response = client.chat.completions.create(
