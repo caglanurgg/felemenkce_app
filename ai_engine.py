@@ -39,11 +39,13 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
         json_exercise_schema = {}
         
         if exercise_settings.get("show_tf"):
-            exercise_requirements.append("- true_false: 3 statements based on the text. Each statement MUST have 'statement' (string) and 'correct_answer' (boolean)")
-            json_exercise_schema["true_false"] = [{"statement": "example statement", "correct_answer": True}]
+            exercise_requirements.append("- true_false: 3 statements based on the text. Each statement MUST have 'statement' (string), 'correct_answer' (boolean), and 'evidence' (the exact sentence from the text that proves it, string)")
+            json_exercise_schema["true_false"] = [{"statement": "example statement", "correct_answer": True, "evidence": "exact sentence from text"}]
+            
         if exercise_settings.get("show_mc"):
-            exercise_requirements.append("- multiple_choice: 3 questions. Each question MUST have 'question' (string), 'options' (array of strings), and 'correct_answer' (string matching one option)")
-            json_exercise_schema["multiple_choice"] = [{"question": "example question", "options": ["Option A", "Option B"], "correct_answer": "Option A"}]
+            exercise_requirements.append("- multiple_choice: 3 questions. Each question MUST have 'question' (string), 'options' (array of strings), 'correct_answer' (string matching one option), and 'evidence' (the exact sentence from the text where the answer is found, string)")
+            json_exercise_schema["multiple_choice"] = [{"question": "example question", "options": ["Option A", "Option B"], "correct_answer": "Option A", "evidence": "exact sentence from text"}]
+            
         if exercise_settings.get("show_writing"):
             exercise_requirements.append("- open_ended: 1 writing prompt string asking the user to write a short paragraph.")
             json_exercise_schema["open_ended"] = "example writing prompt here"
