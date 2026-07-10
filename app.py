@@ -2,21 +2,18 @@ import os
 import streamlit as st
 from storage import load_heatmap, save_heatmap, load_reading_session, save_reading_session
 from highlighter import highlight_text
-from ai_engine import generate_reading_package
+from ai_engine import generate_reading_package, generate_explanation 
 from ui import render_sidebar, render_vocabulary_assistant, render_exercises
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
 st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="centered")
 
-# Üst Barı ve Sürüm Kontrol Linklerini Gizleyen CSS
 st.markdown("""
 <style>
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
     header {visibility: hidden;}
     .stAppDeployButton {display:none !important;}
-    
-    /* Kelime Vurgulama CSS Sınıfları */
     .highlight-green { background-color: rgba(40, 167, 69, 0.25); border-bottom: 2px solid #28a745; padding: 0 4px; border-radius: 4px; }
     .highlight-yellow { background-color: rgba(255, 193, 7, 0.3); border-bottom: 2px solid #ffc107; padding: 0 4px; border-radius: 4px; }
     .highlight-red { background-color: rgba(220, 53, 69, 0.25); border-bottom: 2px solid #dc3545; padding: 0 4px; border-radius: 4px; }
@@ -25,7 +22,6 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# Gelişmiş Hafıza Yapılandırması (Açılışta Otomatik Yükleme)
 if 'heatmap_vocab' not in st.session_state:
     st.session_state['heatmap_vocab'] = load_heatmap()
 
@@ -38,19 +34,16 @@ st.markdown("<h1 class='main-title'>🌏 Universal AI Reading Platform</h1>", un
 st.markdown("<p class='subtitle'>Adaptive Learning Platform with Persistent Reading Heatmap.</p>", unsafe_allow_html=True)
 st.write("---")
 
-# 2. Güvenli API Anahtarı Yönetimi
 api_key = os.getenv("OPENAI_API_KEY") or st.secrets.get("OPENAI_API_KEY", "")
 if not api_key:
     st.warning("⚠️ Please define 'OPENAI_API_KEY' in your system environment or Streamlit Secrets.")
     api_key = st.text_input("Or enter your API Key here for testing:", type="password")
 
-# Dil Seçim Kutusu
 lang_options = ["Nederlands", "English", "French", "Korean", "Spanish"]
 default_lang_idx = lang_options.index(saved["ui_target_language"]) if "ui_target_language" in saved else 0
 target_language = st.selectbox("Select the language you want to learn:", lang_options, index=default_lang_idx)
 st.write("")
 
-# 3. Form Elemanları (Kayıttan yükleme korumalı)
 col1, col2, col3, col4 = st.columns(4)
 level_options = ["A1", "A2", "B1", "B2", "C1"]
 default_level_idx = level_options.index(saved["ui_seviye"]) if "ui_seviye" in saved else 0
@@ -68,7 +61,6 @@ with col4:
     konu = st.text_input("Topic", value=saved.get("ui_konu", ""), placeholder="e.g., Daily Routine, Hobbies, Travel...")
 st.write("")
 
-# Egzersiz Türü Seçimleri
 st.markdown("### 🛠️ Select Exercise Types")
 ex_col1, ex_col2, ex_col3 = st.columns(3)
 with ex_col1:
@@ -79,7 +71,6 @@ with ex_col3:
     show_writing = st.checkbox("Open-ended Writing", value=saved.get("ui_show_writing", False))
 st.write("")
 
-# 4. Üretim Butonu
 if st.button("Generate Text & Exercises 🚀", use_container_width=True):
     if not api_key:
         st.error("⚠️ Please enter a valid API Key before generating content.")
@@ -104,23 +95,18 @@ if st.button("Generate Text & Exercises 🚀", use_container_width=True):
             else:
                 st.error(f"OpenAI API Error: {error_msg}")
 
-# 5. Sonuçların Ekrana Basılması (Merkezi UI Fonksiyonlarını Çağırma)
 if st.session_state['saved_session'] is not None and "api_data" in st.session_state['saved_session']:
     data = st.session_state['saved_session']["api_data"]
     st.write("---")
     
-    # Başlık ve Metin Çizimi
     st.subheader(f"📖 {data.get('title', 'Reading Text')}")
     reading_text = highlight_text(data.get("text", ""), st.session_state['heatmap_vocab'])
     st.markdown(f"<div style='line-height:1.8; font-size:1.1rem;'>{reading_text}</div>", unsafe_allow_html=True)
     st.write("---")
     
-    # UI Modülünden Kelime Asistanını Çiziyoruz
     render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap)
     st.write("---")
     
-    # UI Modülünden Egzersizleri Çiziyoruz
-    render_exercises(data.get('exercises', {}))
+    render_exercises(data.get('exercises', {}), api_key, data.get('text', ''))
 
-    # UI Modülünden Yan Paneli Çiziyoruz
-    render_sidebar(save_heatmap)
+render_sidebar(save_heatmap)

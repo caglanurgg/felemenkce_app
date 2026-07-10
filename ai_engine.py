@@ -27,7 +27,7 @@ def build_memory_instruction(heatmap_vocab):
 def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayisi, konu, heatmap_vocab, exercise_settings):
     """
     OpenAI API ile konuşur, promptları birleştirir, JSON'ı parse eder 
-     ve geriye (True/False, parsed_data, error_message) şeklinde 3'lü tuple döndürür.
+    ve geriye (True/False, parsed_data, error_message) şeklinde 3'lü tuple döndürür.
     """
     # Eğer kullanıcı konu girmediyse yapay zeka rastgele ama seviyeye uygun saçmalasın
     final_topic = konu if konu.strip() else "General topics suitable for this level"
@@ -92,3 +92,43 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
         
     except Exception as e:
         return False, None, str(e)
+
+def generate_explanation(api_key, target_language, reading_text, question, user_answer, correct_evidence):
+    """
+    Kullanıcının yanlış cevabını analiz eder ve Sandviç Metodu ile İngilizce-Türkçe
+    satır boşluklu canlı hoca açıklaması üretir.
+    """
+    try:
+        client = OpenAI(api_key=api_key)
+        
+        system_prompt = (
+            "You are an expert supportive language teacher. The user is practicing reading comprehension. "
+            "They just answered a question incorrectly. Explain briefly why their answer is wrong "
+            "using the provided evidence from the text. "
+            "CRITICAL FORMATTING RULE: You must provide exactly two sentences separated by a blank line (a new line break).\n"
+            "Sentence 1 (Top): Explain the mistake in 1 short sentence using simple, clear B1 English.\n"
+            "Sentence 2 (Bottom): Provide the direct Turkish translation/summary of Sentence 1 in 1 short sentence.\n"
+            "Do NOT bunch them together. Keep a clear line break between English and Turkish. Speak directly to the student."
+        )
+        
+        user_prompt = f"""
+        Reading Text Context: {reading_text}
+        Question Asked: {question}
+        User's Incorrect Answer: {user_answer}
+        Correct Evidence Sentence from Text: {correct_evidence}
+        
+        Provide the explanation with a line break now:
+        """
+        
+        response = client.chat.completions.create(
+            model="gpt-4o-mini",
+            messages=[
+                {"role": "system", "content": system_prompt},
+                {"role": "user", "content": user_prompt}
+            ],
+            temperature=0.5,
+            max_completion_tokens=150
+        )
+        return response.choices[0].message.content.strip()
+    except Exception as e:
+        return f"Açıklama üretilemedi: {str(e)}"

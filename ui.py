@@ -1,5 +1,6 @@
 import streamlit as st
 import os
+from ai_engine import generate_explanation 
 
 def render_sidebar(save_heatmap):
     """Yan paneldeki AI Hafıza Dashboard'unu ve Isı Haritasını çizer."""
@@ -75,8 +76,8 @@ def render_vocabulary_assistant(vocabulary, save_heatmap):
                     save_heatmap(st.session_state['heatmap_vocab'])
                     st.rerun()
 
-def render_exercises(exercises):
-    """Metne ait interaktif egzersiz formunu ve değerlendirme sonuçlarını çizer."""
+def render_exercises(exercises, api_key, reading_text):
+    """🌟 3 Parametre Alacak Şekilde Güncellenen Egzersiz Çizim Alanı"""
     st.subheader("✍️ Interactive Exercises")
     
     with st.form("exercise_form"):
@@ -102,8 +103,8 @@ def render_exercises(exercises):
             
         submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
         
-        if submit_answers:
-            st.markdown("### 📊 Evaluation Results")
+    if submit_answers:
+        st.markdown("### 📊 Evaluation Results")
         
         if "true_false" in exercises and exercises["true_false"]:
             for i, tf in enumerate(exercises["true_false"]):
@@ -115,9 +116,11 @@ def render_exercises(exercises):
                         st.write(f"Statement {i+1}: ✅ Correct!")
                     else:
                         st.write(f"Statement {i+1}: ❌ Incorrect")
-                        
                         if "evidence" in tf:
                             st.caption(f"📖 **Evidence:** *\"{tf.get('evidence')}\"*")
+                            with st.spinner("Öğretmen notu hazırlanıyor..."):
+                                explanation = generate_explanation(api_key, "Turkish", reading_text, tf.get('statement'), str(ans), tf.get('evidence'))
+                                st.info(f"💡 **Teacher's Note:**\n\n{explanation}")
                     
         if "multiple_choice" in exercises and exercises["multiple_choice"]:
             for i, mc in enumerate(exercises["multiple_choice"]):
@@ -128,6 +131,8 @@ def render_exercises(exercises):
                         st.write(f"Question {i+1}: ✅ Correct!")
                     else:
                         st.write(f"Question {i+1}: ❌ Incorrect")
-                       
                         if "evidence" in mc:
                             st.caption(f"📖 **Evidence:** *\"{mc.get('evidence')}\"*")
+                            with st.spinner("Öğretmen notu hazırlanıyor..."):
+                                explanation = generate_explanation(api_key, "Turkish", reading_text, mc.get('question'), ans, mc.get('evidence'))
+                                st.info(f"💡 **Teacher's Note:**\n\n{explanation}")
