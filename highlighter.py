@@ -1,37 +1,37 @@
 import re
 
-def highlight_text(reading_text, heatmap_vocab):
+def highlight_text(text, heatmap_vocab):
     """
-    Kayıtlı kelimeleri metin içinde dilden bağımsız (Unicode), 
-    ekleri ve aksanları kapsayacak şekilde dinamik olarak vurgular.
+    Metindeki kelimeleri kullanıcının hafıza durumuna göre renklendirir.
+    Korece gibi bitişik ek alan dillerde tam kelime sınırı (\b) yerine 
+    akıllı kök (substring) araması yapar.
     """
     if not heatmap_vocab:
-        return reading_text
-        
-    # Uzun kelimeler öncelikli olsun ki iç içe çakışma (substring mismatch) yaşanmasın
+        return text
+
+    # Kelimeleri uzunluklarına göre büyükten küçüğe sıralıyoruz.
+    # (Böylece önce uzun kelimeler boyanır, iç içe geçmeler engellenir)
     sorted_words = sorted(heatmap_vocab.keys(), key=len, reverse=True)
-    
+
     for word in sorted_words:
         status = heatmap_vocab[word]
         
-        # Duruma göre CSS sınıfı seçimi
         if "I know this" in status:
-            color_class = "highlight-green"
+            class_name = "highlight-green"
         elif "I've seen this" in status:
-            color_class = "highlight-yellow"
+            class_name = "highlight-yellow"
+        elif "New to me" in status:
+            class_name = "highlight-red"
         else:
-            color_class = "highlight-red"
-            
-        # Esnek kök analizi ve Unicode (aksan) destekli regex deseni
-        root_word = word[:-2] if len(word) > 5 else word[:-1] if len(word) > 3 else word
-        pattern = rf"\b({re.escape(root_word)}[a-zA-ZáéíóúüñÁÉÍÓÚÜÑ]*)\b"
-        
-        # HTML enjeksiyonu ile kelimeyi sarmala
-        reading_text = re.sub(
-            pattern, 
-            f'<span class="{color_class}">\\1</span>', 
-            reading_text, 
-            flags=re.IGNORECASE
-        )
-        
-    return reading_text
+            continue
+
+        if re.search(r'[\uac00-\ud7a3]', word):
+            # Asya dilleri için: Kelime sınırına bakmadan direkt kök (substring) olarak ara
+            pattern = re.compile(re.escape(word), re.IGNORECASE)
+        else:
+            # Batı dilleri için: Kelime sınırlarını (\b) koru ki kelime içindeki heceler rastgele boyanmasın
+            pattern = re.compile(r'\b' + re.escape(word) + r'\b', re.IGNORECASE)
+
+        text = pattern.sub(f'<span class="{class_name}">\\g<0></span>', text)
+
+    return text
