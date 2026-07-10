@@ -102,8 +102,8 @@ def render_exercises(exercises):
             
         submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
         
-    if submit_answers:
-        st.markdown("### 📊 Evaluation Results")
+        if submit_answers:
+            st.markdown("### 📊 Evaluation Results")
         
         if "true_false" in exercises and exercises["true_false"]:
             for i, tf in enumerate(exercises["true_false"]):
@@ -111,11 +111,23 @@ def render_exercises(exercises):
                 ans = user_tf_answers[i]
                 if ans != "Not Answered":
                     user_bool = True if ans == "True" else False
-                    st.write(f"Statement {i+1}: {'✅ Correct!' if user_bool == correct else '❌ Incorrect'}")
+                    if user_bool == correct:
+                        st.write(f"Statement {i+1}: ✅ Correct!")
+                    else:
+                        st.write(f"Statement {i+1}: ❌ Incorrect")
+                        # 🌟 Sprint 6.3: Kanıtı gösteriyoruz
+                        if "evidence" in tf:
+                            st.caption(f"📖 **Evidence:** *\"{tf.get('evidence')}\"*")
                     
         if "multiple_choice" in exercises and exercises["multiple_choice"]:
             for i, mc in enumerate(exercises["multiple_choice"]):
                 correct_opt = mc.get('correct_answer')
                 ans = user_mc_answers[i]
                 if ans != "Not Answered":
-                    st.write(f"Question {i+1}: {'✅ Correct!' if ans.startswith(correct_opt) or correct_opt in ans else '❌ Incorrect'}")
+                    if ans.startswith(correct_opt) or correct_opt in ans:
+                        st.write(f"Question {i+1}: ✅ Correct!")
+                    else:
+                        st.write(f"Question {i+1}: ❌ Incorrect")
+                       
+                        if "evidence" in mc:
+                            st.caption(f"📖 **Evidence:** *\"{mc.get('evidence')}\"*")
