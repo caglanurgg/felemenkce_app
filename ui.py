@@ -115,7 +115,7 @@ def render_exercises(exercises):
                         st.write(f"Statement {i+1}: ✅ Correct!")
                     else:
                         st.write(f"Statement {i+1}: ❌ Incorrect")
-                        # 🌟 Sprint 6.3: Kanıtı gösteriyoruz
+                        
                         if "evidence" in tf:
                             st.caption(f"📖 **Evidence:** *\"{tf.get('evidence')}\"*")
                     
