@@ -117,7 +117,7 @@ def render_exercises(exercises, api_key, reading_text):
                     else:
                         st.write(f"Statement {i+1}: ❌ Incorrect")
                         if "evidence" in tf:
-                            st.caption(f"📖 **Evidence:** *\"{tf.get('evidence')}\"*")
+                            st.markdown(f"📊 **Evidence from the text:** *\"{tf.get('evidence')}\"*")
                             with st.spinner("Öğretmen notu hazırlanıyor..."):
                                 explanation = generate_explanation(api_key, "Turkish", reading_text, tf.get('statement'), str(ans), tf.get('evidence'))
                                 st.info(f"💡 **Teacher's Note:**\n\n{explanation}")
@@ -132,7 +132,7 @@ def render_exercises(exercises, api_key, reading_text):
                     else:
                         st.write(f"Question {i+1}: ❌ Incorrect")
                         if "evidence" in mc:
-                            st.caption(f"📖 **Evidence:** *\"{mc.get('evidence')}\"*")
+                            st.markdown(f"📊 **Evidence from the text:** *\"{mc.get('evidence')}\"*")
                             with st.spinner("Öğretmen notu hazırlanıyor..."):
                                 explanation = generate_explanation(api_key, "Turkish", reading_text, mc.get('question'), ans, mc.get('evidence'))
                                 st.info(f"💡 **Teacher's Note:**\n\n{explanation}")
