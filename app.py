@@ -101,9 +101,23 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
     
     main_col1, main_col2 = st.columns([1.1, 1.0], gap="large")
     
-    # 📖 SOL KOLON: Sabit Okuma Metni ve Seslendirme
+# 📖 SOL KOLON: Sabit Okuma Metni, Skorlar ve Seslendirme
     with main_col1:
         st.subheader(f"📖 {data.get('title', 'Reading Text')}")
+        
+        # 🌟 YENİ UX: Zorluk Skorları ve Okuma Süresi Etiketleri
+        diff = data.get('reading_difficulty', {})
+        reading_time = data.get('estimated_reading_time', 'N/A')
+        
+        st.markdown(f"""
+        <div style='margin-bottom: 15px; font-size: 0.95rem; color: #9CA3AF;'>
+            ⏱️ <strong>Estimated Time:</strong> {reading_time} &nbsp;|&nbsp; 
+            📚 <strong>Vocab:</strong> <span style='color: #1c8cf0;'>{diff.get('vocabulary', '★★★☆☆')}</span> &nbsp;|&nbsp; 
+            🧩 <strong>Grammar:</strong> <span style='color: #1c8cf0;'>{diff.get('grammar', '★★★☆☆')}</span> &nbsp;|&nbsp; 
+            💡 <strong>Inference:</strong> <span style='color: #1c8cf0;'>{diff.get('inference', '★★★☆☆')}</span>
+        </div>
+        """, unsafe_allow_html=True)
+        
         reading_text = highlight_text(data.get("text", ""), st.session_state['heatmap_vocab'])
         st.markdown(f"<div style='line-height:1.8; font-size:1.1rem; background-color: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);'>{reading_text}</div>", unsafe_allow_html=True)
         st.write("")
