@@ -113,7 +113,7 @@ def generate_explanation(api_key, target_language, reading_text, question, user_
             "Line 1: '🔍 Mistake Type: [Insert exactly one of the 5 categories above]'\n"
             "Line 2: '💡 Why?: [1 short sentence explaining the error in simple clear B1 English]'\n"
             "Line 3: '[Exact Turkish translation of Line 2]'\n"
-            "Line 4: '🎯 Learning Tip: [Identify if the word has a variant in the text (e.g., profound vs. profoundly). If so, briefly explain the suffix function (e.g., -ly makes it an adverb). If not, provide a specific grammar or usage tip.]'\n"
+            "Line 4: '🎯 Learning Tip: [CRITICAL: Look closely at the highlighted words in the context. If a word appears in a different form than the vocabulary list (e.g., list has \"profound\" but text uses \"profoundly\", or list has \"captiver\" but text uses \"captivé\"), you MUST explicitly explain this specific grammar/morphology transformation (e.g., \"Notice that 'profound' is an adjective, but adding '-ly' makes it 'profoundly', which is an adverb\"). If there is no specific variant, provide a high-value grammar or vocabulary tip based on the sentence.]'\n"
             "Line 5: '[Exact Turkish translation of Line 4]'\n\n"
             "Do not output anything else. Keep lines completely separate."
         )

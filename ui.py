@@ -134,9 +134,9 @@ def render_exercises(exercises, api_key, reading_text):
                             st.markdown(f"📊 **Evidence from the text:** *\"{tf.get('evidence')}\"*")
                             with st.spinner("Öğretmen notu hazırlanıyor..."):
                                 explanation = generate_explanation(api_key, "Turkish", reading_text, tf.get('statement'), str(ans), tf.get('evidence'))
-                                st.markdown(f"""<div style="background-color: rgba(28, 140, 240, 0.1); border-left: 5px solid #1c8cf0; padding: 15px; border-radius: 5px; margin-top: 10px;">
-    <strong style="color: #1c8cf0; font-size: 1.15rem;">💡 Teacher's Note:</strong><br>
-    <div style="font-size: 1.1rem; line-height: 1.6; white-space: pre-wrap; margin-top: 5px;">{explanation}</div></div><br>""", unsafe_allow_html=True)
+                                st.markdown(f"""<div style="background-color: rgba(28, 140, 240, 0.08); border-left: 6px solid #1c8cf0; padding: 18px; border-radius: 8px; margin-top: 12px; margin-bottom: 12px;">
+    <strong style="color: #1c8cf0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💡 Teacher's Note & Language Insight</strong>
+    <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)
                     
         if "multiple_choice" in exercises and exercises["multiple_choice"]:
             for i, mc in enumerate(exercises["multiple_choice"]):
@@ -151,6 +151,6 @@ def render_exercises(exercises, api_key, reading_text):
                             st.markdown(f"📊 **Evidence from the text:** *\"{mc.get('evidence')}\"*")
                             with st.spinner("Öğretmen notu hazırlanıyor..."):
                                 explanation = generate_explanation(api_key, "Turkish", reading_text, mc.get('question'), ans, mc.get('evidence'))
-                                st.markdown(f"""<div style="background-color: rgba(28, 140, 240, 0.1); border-left: 5px solid #1c8cf0; padding: 15px; border-radius: 5px; margin-top: 10px;">
-    <strong style="color: #1c8cf0; font-size: 1.15rem;">💡 Teacher's Note:</strong><br>
-    <div style="font-size: 1.1rem; line-height: 1.6; white-space: pre-wrap; margin-top: 5px;">{explanation}</div></div><br>""", unsafe_allow_html=True)
+                                st.markdown(f"""<div style="background-color: rgba(28, 140, 240, 0.08); border-left: 6px solid #1c8cf0; padding: 18px; border-radius: 8px; margin-top: 12px; margin-bottom: 12px;">
+    <strong style="color: #1c8cf0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💡 Teacher's Note & Language Insight</strong>
+    <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)
