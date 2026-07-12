@@ -66,9 +66,13 @@ def render_vocabulary_assistant(vocabulary, save_heatmap, api_key):
                         audio_bytes = generate_speech(api_key, word_key)
                         if audio_bytes:
                             st.audio(audio_bytes, format="audio/mp3", autoplay=True)
-                        else:
-                            st.error("Ses yüklenemedi.")
-                            
+
+            if "variants" in item and item["variants"]:
+                st.markdown("<div style='margin-top: 8px; margin-bottom: 8px;'><strong>🔗 Detected Variants in Text:</strong></div>", unsafe_allow_html=True)
+                for var in item["variants"]:
+                    st.markdown(f"&nbsp;&nbsp;&nbsp;&nbsp;• <code style='color: #1c8cf0;'>{var.get('form')}</code> — <small style='color: #9CA3AF;'>{var.get('explanation')}</small>", unsafe_allow_html=True)
+                st.write("")
+
             st.write(f"**📝 Example:** {item.get('example', 'No example provided.')}")
             
             st.markdown("**How familiar is this word to you?**")
