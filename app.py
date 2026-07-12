@@ -72,6 +72,9 @@ with ex_col3:
 st.write("")
 
 if st.button("Generate Text & Exercises 🚀", use_container_width=True):
+    if 'saved_session' in st.session_state:
+        del st.session_state['saved_session']
+        
     if not api_key:
         st.error("⚠️ Please enter a valid API Key before generating content.")
     else:

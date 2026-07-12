@@ -80,7 +80,8 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
             "  ],\n"
             "  \"exercises\": " + json.dumps(json_exercise_schema) + "\n"
             "}\n\n"
-            "Generate exactly 5 vocabulary words from the text. "
+            "Generate exactly 5 vocabulary words from the generated text. "
+            "CRITICAL: The vocabulary words MUST be strictly in the selected target language (" + str(target_language) + ") and MUST match or be very close to the requested CEFR level (" + str(seviye) + "). NEVER mix words from other languages or previous topics. "
             "Include only the requested exercises in the 'exercises' object:\n" + str(exercise_req_text) + "\n"
             + str(adaptive_instruction)
         )
