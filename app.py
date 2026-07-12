@@ -2,7 +2,7 @@ import os
 import streamlit as st
 from storage import load_heatmap, save_heatmap, load_reading_session, save_reading_session
 from highlighter import highlight_text
-from ai_engine import generate_reading_package, generate_explanation 
+from ai_engine import generate_reading_package, generate_explanation, generate_speech
 from ui import render_sidebar, render_vocabulary_assistant, render_exercises
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
@@ -99,23 +99,25 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
     data = st.session_state['saved_session']["api_data"]
     st.write("---")
     
-    st.sidebar.markdown("---")
-    st.sidebar.subheader(f"📖 {data.get('title', 'Reading Text')}")
+    main_col1, main_col2 = st.columns([1.1, 1.0], gap="large")
     
-    reading_text = highlight_text(data.get("text", ""), st.session_state['heatmap_vocab'])
-    
-    st.sidebar.markdown(f"<div style='line-height:1.8; font-size:1.05rem; background-color: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;'>{reading_text}</div>", unsafe_allow_html=True)
-    
-    # 🔊 BÜTÜN METNİ SESLİ DİNLEME BUTONU (Sol panelde metnin hemen altında)
-    if st.sidebar.button("🔊 Listen to Whole Text", use_container_width=True):
-        with st.sidebar.spinner("Metin seslendiriliyor..."):
-            entire_audio = generate_speech(api_key, data.get("text", ""))
-            if entire_audio:
-                st.sidebar.audio(entire_audio, format="audio/mp3", autoplay=True)
-    
-    render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap, api_key)
-    st.write("---")
-    
-    render_exercises(data.get('exercises', {}), api_key, data.get('text', ''))
+    # 📖 SOL KOLON: Sabit Okuma Metni ve Seslendirme
+    with main_col1:
+        st.subheader(f"📖 {data.get('title', 'Reading Text')}")
+        reading_text = highlight_text(data.get("text", ""), st.session_state['heatmap_vocab'])
+        st.markdown(f"<div style='line-height:1.8; font-size:1.1rem; background-color: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);'>{reading_text}</div>", unsafe_allow_html=True)
+        st.write("")
+        
+        # Bütün metni seslendirme butonu metnin hemen altında sabit
+        if st.button("🔊 Listen to Whole Text", use_container_width=True, key="listen_whole_text_main"):
+            with st.spinner("Metin seslendiriliyor..."):
+                entire_audio = generate_speech(api_key, data.get("text", ""))
+                if entire_audio:
+                    st.audio(entire_audio, format="audio/mp3", autoplay=True)
+                    
+    with main_col2:
+        render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap, api_key)
+        st.write("---")
+        render_exercises(data.get('exercises', {}), api_key, data.get('text', ''))
 
 render_sidebar(save_heatmap)
