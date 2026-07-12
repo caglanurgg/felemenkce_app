@@ -53,7 +53,6 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
         exercise_req_text = "\n".join(exercise_requirements)
         adaptive_instruction = build_memory_instruction(heatmap_vocab)
         
-        # Mimarideki System Prompt 
         system_prompt = (
             "You are an expert " + str(target_language) + " language teacher that outputs raw JSON data.\n"
             "You must return a valid JSON object matching this strict schema exactly:\n"
@@ -81,7 +80,7 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
             "  \"exercises\": " + json.dumps(json_exercise_schema) + "\n"
             "}\n\n"
             "Generate exactly 5 vocabulary words from the generated text. "
-            "CRITICAL: The vocabulary words MUST be strictly in the selected target language (" + str(target_language) + ") and MUST match or be very close to the requested CEFR level (" + str(seviye) + "). NEVER mix words from other languages or previous topics. "
+            "CRITICAL: The vocabulary words MUST be strictly in the selected target language (" + str(target_language) + ") and MUST match or be very close to the requested CEFR level (" + str(seviye) + "). NEVER mix words from other languages or previous topics.\n"
             "Include only the requested exercises in the 'exercises' object:\n" + str(exercise_req_text) + "\n"
             + str(adaptive_instruction)
         )
