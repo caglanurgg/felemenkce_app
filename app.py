@@ -99,10 +99,19 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
     data = st.session_state['saved_session']["api_data"]
     st.write("---")
     
-    st.subheader(f"📖 {data.get('title', 'Reading Text')}")
+    st.sidebar.markdown("---")
+    st.sidebar.subheader(f"📖 {data.get('title', 'Reading Text')}")
+    
     reading_text = highlight_text(data.get("text", ""), st.session_state['heatmap_vocab'])
-    st.markdown(f"<div style='line-height:1.8; font-size:1.1rem;'>{reading_text}</div>", unsafe_allow_html=True)
-    st.write("---")
+    
+    st.sidebar.markdown(f"<div style='line-height:1.8; font-size:1.05rem; background-color: rgba(255,255,255,0.05); padding: 10px; border-radius: 5px;'>{reading_text}</div>", unsafe_allow_html=True)
+    
+    # 🔊 BÜTÜN METNİ SESLİ DİNLEME BUTONU (Sol panelde metnin hemen altında)
+    if st.sidebar.button("🔊 Listen to Whole Text", use_container_width=True):
+        with st.sidebar.spinner("Metin seslendiriliyor..."):
+            entire_audio = generate_speech(api_key, data.get("text", ""))
+            if entire_audio:
+                st.sidebar.audio(entire_audio, format="audio/mp3", autoplay=True)
     
     render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap, api_key)
     st.write("---")
