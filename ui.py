@@ -1,6 +1,5 @@
 import streamlit as st
 import os
-from ai_engine import generate_explanation 
 from ai_engine import generate_explanation, generate_speech
 
 def render_sidebar(save_heatmap):
@@ -94,15 +93,17 @@ def render_vocabulary_assistant(vocabulary, save_heatmap, api_key):
                     save_heatmap(st.session_state['heatmap_vocab'])
                     st.rerun()
 
-def render_exercises(exercises, api_key, reading_text):
-    """🌟 3 Parametre Alacak Şekilde Güncellenen Egzersiz Çizim Alanı"""
+def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=True, show_writing=False):
+    """🌟 Checkbox durumlarını alan ve Open-ended alanını dinamik basan güncel render motoru"""
     st.subheader("✍️ Interactive Exercises")
     
     with st.form("exercise_form"):
         user_tf_answers = {}
         user_mc_answers = {}
+        user_writing_answer = ""
         
-        if "true_false" in exercises and exercises["true_false"]:
+        # 1. True / False Bölümü
+        if show_tf and "true_false" in exercises and exercises["true_false"]:
             st.markdown("### 📄 True / False Statements")
             for i, tf in enumerate(exercises["true_false"]):
                 st.write(f"**{i+1}.** {tf.get('statement')}")
@@ -110,7 +111,8 @@ def render_exercises(exercises, api_key, reading_text):
                 user_tf_answers[i] = ans
             st.write("---")
             
-        if "multiple_choice" in exercises and exercises["multiple_choice"]:
+        # 2. Reading Comprehension Bölümü
+        if show_mc and "multiple_choice" in exercises and exercises["multiple_choice"]:
             st.markdown("### ❓ Reading Comprehension")
             for i, mc in enumerate(exercises["multiple_choice"]):
                 st.write(f"**Q{i+1}:** {mc.get('question')}")
@@ -119,12 +121,19 @@ def render_exercises(exercises, api_key, reading_text):
                 user_mc_answers[i] = ans
             st.write("---")
             
+        # 3. Open-ended Writing Bölümü (Eksik olan kısım eklendi)
+        if show_writing and "open_ended" in exercises and exercises["open_ended"]:
+            st.markdown("### ✍️ Open-ended Writing Prompt")
+            st.write(f"**Prompt:** {exercises['open_ended'].get('prompt', 'Write a brief response based on the text.')}")
+            user_writing_answer = st.text_area("Type your essay/response here:", key="open_ended_user_input", height=150)
+            st.write("---")
+            
         submit_answers = st.form_submit_button("Check Answers 🎯", use_container_width=True)
         
     if submit_answers:
         st.markdown("### 📊 Evaluation Results")
         
-        if "true_false" in exercises and exercises["true_false"]:
+        if show_tf and "true_false" in exercises and exercises["true_false"]:
             for i, tf in enumerate(exercises["true_false"]):
                 correct = tf.get('correct_answer')
                 ans = user_tf_answers[i]
@@ -142,7 +151,7 @@ def render_exercises(exercises, api_key, reading_text):
     <strong style="color: #1c8cf0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💡 Teacher's Note & Language Insight</strong>
     <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)
                     
-        if "multiple_choice" in exercises and exercises["multiple_choice"]:
+        if show_mc and "multiple_choice" in exercises and exercises["multiple_choice"]:
             for i, mc in enumerate(exercises["multiple_choice"]):
                 correct_opt = mc.get('correct_answer')
                 ans = user_mc_answers[i]
@@ -157,4 +166,14 @@ def render_exercises(exercises, api_key, reading_text):
                                 explanation = generate_explanation(api_key, "Turkish", reading_text, mc.get('question'), ans, mc.get('evidence'))
                                 st.markdown(f"""<div style="background-color: rgba(28, 140, 240, 0.08); border-left: 6px solid #1c8cf0; padding: 18px; border-radius: 8px; margin-top: 12px; margin-bottom: 12px;">
     <strong style="color: #1c8cf0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💡 Teacher's Note & Language Insight</strong>
+    <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)
+
+        # Open-ended değerlendirme tetikleyicisi
+        if show_writing and user_writing_answer.strip():
+            st.markdown("### 📝 Writing Feedback")
+            with st.spinner("Yazınız analiz ediliyor..."):
+                writing_prompt = exercises['open_ended'].get('prompt', '')
+                explanation = generate_explanation(api_key, "Turkish", reading_text, writing_prompt, user_writing_answer, "Open-ended Essay Response")
+                st.markdown(f"""<div style="background-color: rgba(16, 185, 129, 0.08); border-left: 6px solid #10b981; padding: 18px; border-radius: 8px; margin-top: 12px; margin-bottom: 12px;">
+    <strong style="color: #10b981; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">✍️ Writing Coach Evaluation</strong>
     <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)

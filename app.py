@@ -104,11 +104,11 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
     
     main_col1, main_col2 = st.columns([1.1, 1.0], gap="large")
     
-# 📖 SOL KOLON: Sabit Okuma Metni, Skorlar ve Seslendirme
+    # 📖 SOL KOLON: Sabit Okuma Metni, Skorlar ve Seslendirme
     with main_col1:
         st.subheader(f"📖 {data.get('title', 'Reading Text')}")
         
-        # 🌟 YENİ UX: Zorluk Skorları ve Okuma Süresi Etiketleri
+        # Zorluk Skorları ve Okuma Süresi Etiketleri
         diff = data.get('reading_difficulty', {})
         reading_time = data.get('estimated_reading_time', 'N/A')
         
@@ -125,7 +125,6 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
         st.markdown(f"<div style='line-height:1.8; font-size:1.1rem; background-color: rgba(255,255,255,0.03); padding: 15px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1);'>{reading_text}</div>", unsafe_allow_html=True)
         st.write("")
         
-        # Bütün metni seslendirme butonu metnin hemen altında sabit
         if st.button("🔊 Listen to Whole Text", use_container_width=True, key="listen_whole_text_main"):
             with st.spinner("Metin seslendiriliyor..."):
                 entire_audio = generate_speech(api_key, data.get("text", ""))
@@ -139,7 +138,10 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
         render_exercises(
             data.get("exercises", {}),
             api_key,
+            data.get("text", ""),
             show_tf,
             show_mc,
             show_writing
         )
+
+render_sidebar(save_heatmap)
