@@ -6,7 +6,7 @@ from ai_engine import generate_reading_package, generate_explanation, generate_s
 from ui import render_sidebar, render_vocabulary_assistant, render_exercises
 
 # 1. Sayfa Konfigürasyonu ve Temiz Görünüm
-st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="centered")
+st.set_page_config(page_title="AI Language Learning Platform", page_icon="🌏", layout="wide")
 
 st.markdown("""
 <style>

@@ -113,7 +113,7 @@ def generate_explanation(api_key, target_language, reading_text, question, user_
             "Line 1: '🔍 Mistake Type: [Insert exactly one of the 5 categories above]'\n"
             "Line 2: '💡 Why?: [1 short sentence explaining the error in simple clear B1 English]'\n"
             "Line 3: '[Exact Turkish translation of Line 2]'\n"
-            "Line 4: '🎯 Learning Tip: [1 short vocabulary or grammar tip in English based on the context]'\n"
+            "Line 4: '🎯 Learning Tip: [Provide a SPECIFIC linguistic, grammatical, or vocabulary tip directly related to the target words in the context. NEVER give generic advice like \"read carefully\" or \"check text\". Give a real language lesson tip in 1 short sentence.]'\n"
             "Line 5: '[Exact Turkish translation of Line 4]'\n\n"
             "Do not output anything else. Keep lines completely separate."
         )
