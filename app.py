@@ -135,7 +135,6 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
     with main_col2:
         render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap, api_key)
         st.write("---")
-        
         render_exercises(
             data.get("exercises", {}),
             api_key,
