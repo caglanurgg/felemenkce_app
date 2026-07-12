@@ -104,7 +104,7 @@ if st.session_state['saved_session'] is not None and "api_data" in st.session_st
     st.markdown(f"<div style='line-height:1.8; font-size:1.1rem;'>{reading_text}</div>", unsafe_allow_html=True)
     st.write("---")
     
-    render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap)
+    render_vocabulary_assistant(data.get('vocabulary', []), save_heatmap, api_key)
     st.write("---")
     
     render_exercises(data.get('exercises', {}), api_key, data.get('text', ''))

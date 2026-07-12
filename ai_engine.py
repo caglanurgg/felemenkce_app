@@ -139,3 +139,20 @@ def generate_explanation(api_key, target_language, reading_text, question, user_
         return response.choices[0].message.content.strip()
     except Exception as e:
         return f"Açıklama üretilemedi: {str(e)}"
+    
+def generate_speech(api_key, text_to_speak):
+    """
+    OpenAI TTS API'sini kullanarak verilen kelimenin ses dosyasını (bites) üretir.
+    """
+    try:
+        from openai import OpenAI
+        client = OpenAI(api_key=api_key)
+        
+        response = client.audio.speech.create(
+            model="tts-1",
+            voice="alloy",  
+            input=text_to_speak
+        )
+        return response.read()
+    except Exception as e:
+        return None    

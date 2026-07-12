@@ -1,6 +1,7 @@
 import streamlit as st
 import os
 from ai_engine import generate_explanation 
+from ai_engine import generate_explanation, generate_speech
 
 def render_sidebar(save_heatmap):
     """Yan paneldeki AI Hafıza Dashboard'unu ve Isı Haritasını çizer."""
@@ -34,7 +35,7 @@ def render_sidebar(save_heatmap):
                 os.remove("reading_session.json")
             st.rerun()
 
-def render_vocabulary_assistant(vocabulary, save_heatmap):
+def render_vocabulary_assistant(vocabulary, save_heatmap, api_key):
     """Metnin altındaki interaktif kelime kartlarını ve oylama butonlarını çizer."""
     st.subheader("✨ Smart Reading Assistant & Heatmap Tool")
     st.markdown("*Click a word below to explore it and log your familiarity level:*")
@@ -54,7 +55,20 @@ def render_vocabulary_assistant(vocabulary, save_heatmap):
                 
         with st.expander(f"{status_emoji}🔽 {word_key} ({item.get('level', 'N/A')})"):
             st.write(f"**🇹🇷 Meaning:** {item.get('meaning')}")
-            st.write(f"**🔊 Pronunciation:** *{item.get('pronunciation', 'N/A')}*")
+            
+            pronunciation_text = item.get('pronunciation', 'N/A')
+            col_audio1, col_audio2 = st.columns([2, 1])
+            with col_audio1:
+                st.write(f"**🔊 Pronunciation:** *{pronunciation_text}*")
+            with col_audio2:
+                if st.button("🎵 Listen", key=f"listen_{idx}"):
+                    with st.spinner("🔊..."):
+                        audio_bytes = generate_speech(api_key, word_key)
+                        if audio_bytes:
+                            st.audio(audio_bytes, format="audio/mp3", autoplay=True)
+                        else:
+                            st.error("Ses yüklenemedi.")
+                            
             st.write(f"**📝 Example:** {item.get('example', 'No example provided.')}")
             
             st.markdown("**How familiar is this word to you?**")
