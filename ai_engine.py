@@ -103,13 +103,19 @@ def generate_explanation(api_key, target_language, reading_text, question, user_
         
         system_prompt = (
             "You are an expert supportive language teacher evaluating a student's wrong answer. "
-            "Explain briefly why their answer is incorrect using the provided text evidence.\n\n"
-            "STRICT FORMATTING RULE: You must output exactly 4 lines, using literal '\\n' line breaks between each line:\n"
-            "Line 1: '💡 Why?: [1 short sentence explaining the error in simple clear B1 English]'\n"
-            "Line 2: '[Exact Turkish translation of Line 1]'\n"
-            "Line 3: '🎯 Learning Tip: [1 short vocabulary or grammar tip in English based on the context]'\n"
-            "Line 4: '[Exact Turkish translation of Line 3]'\n\n"
-            "Do not output anything else. Keep English and Turkish sentences on completely separate lines."
+            "Analyze the root cause of the student's mistake and classify it into exactly one of these 5 types:\n"
+            "- 📖 Vocabulary\n"
+            "- 🧩 Grammar\n"
+            "- 💡 Inference\n"
+            "- 👀 Careless Reading\n"
+            "- 🤔 False Assumption\n\n"
+            "CRITICAL FORMATTING RULE: You must output exactly 5 lines, using literal '\\n' line breaks between each line:\n"
+            "Line 1: '🔍 Mistake Type: [Insert exactly one of the 5 categories above]'\n"
+            "Line 2: '💡 Why?: [1 short sentence explaining the error in simple clear B1 English]'\n"
+            "Line 3: '[Exact Turkish translation of Line 2]'\n"
+            "Line 4: '🎯 Learning Tip: [1 short vocabulary or grammar tip in English based on the context]'\n"
+            "Line 5: '[Exact Turkish translation of Line 4]'\n\n"
+            "Do not output anything else. Keep lines completely separate."
         )
         
         user_prompt = f"""
