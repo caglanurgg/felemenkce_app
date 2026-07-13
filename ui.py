@@ -5,7 +5,9 @@ from analytics import update_analytics
 from storage import save_analytics
 
 def render_sidebar(save_heatmap):
-    # 📈 SPRINT 8.3: Learner Analytics Dashboard
+    """Yan paneldeki AI Hafıza Dashboard'unu ve Learner Analytics'i çizer."""
+    # Sol paneli görünmeye zorlayan bilgilendirme alanı
+    st.sidebar.info("💡 Your learning progress is being calculated in real-time.")
     st.sidebar.markdown("## 📈 Learner Analytics")
     
     analytics = st.session_state.get('learner_analytics', {})
