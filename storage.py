@@ -44,3 +44,35 @@ def save_reading_session(data):
             json.dump(data, f, ensure_ascii=False, indent=4)
     except Exception as e:
         st.error(f"Error saving reading session to local storage: {e}")
+
+def load_analytics():
+    """Kullanıcının öğrenme analitiğini diskten yükler, yoksa boş şablon döner."""
+    file_path = "learner_analytics.json"
+    if os.path.exists(file_path):
+        try:
+            with open(file_path, "r", encoding="utf-8") as f:
+                return json.load(f)
+        except:
+            pass
+            
+    return {
+        "total_texts_read": 0,
+        "language_distribution": {},
+        "correct_answers": 0,
+        "total_questions_answered": 0,
+        "mistake_types_distribution": {
+            "Inference": 0,
+            "False Assumption": 0,
+            "Careless Reading": 0
+        }
+    }
+
+def save_analytics(analytics_data):
+    """Kullanıcının öğrenme analitiğini diske kaydeder."""
+    file_path = "learner_analytics.json"
+    try:
+        with open(file_path, "w", encoding="utf-8") as f:
+            json.dump(analytics_data, f, ensure_ascii=False, indent=4)
+        return True
+    except:
+        return False

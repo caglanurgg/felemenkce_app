@@ -25,6 +25,10 @@ st.markdown("""
 if 'heatmap_vocab' not in st.session_state:
     st.session_state['heatmap_vocab'] = load_heatmap()
 
+if 'learner_analytics' not in st.session_state:
+    from storage import load_analytics
+    st.session_state['learner_analytics'] = load_analytics()    
+
 if 'saved_session' not in st.session_state:
     st.session_state['saved_session'] = load_reading_session()
 
