@@ -5,8 +5,34 @@ from analytics import update_analytics
 from storage import save_analytics
 
 def render_sidebar(save_heatmap):
-    """Yan paneldeki AI Hafıza Dashboard'unu ve Isı Haritasını çizer."""
-    if st.session_state['heatmap_vocab']:
+    # 📈 SPRINT 8.3: Learner Analytics Dashboard
+    st.sidebar.markdown("## 📈 Learner Analytics")
+    
+    analytics = st.session_state.get('learner_analytics', {})
+    total_texts = analytics.get("total_texts_read", 0)
+    total_q = analytics.get("total_questions_answered", 0)
+    correct_q = analytics.get("correct_answers", 0)
+    
+    accuracy = int((correct_q / total_q) * 100) if total_q > 0 else 0
+    
+    col_side1, col_side2 = st.sidebar.columns(2)
+    with col_side1:
+        st.metric("Sessions 📚", total_texts)
+    with col_side2:
+        st.metric("Accuracy 🎯", f"%{accuracy}")
+        
+    st.sidebar.write(f"❓ **Questions Answered:** {total_q}")
+    st.sidebar.write(f"✅ **Correct Answers:** {correct_q}")
+    
+    lang_dist = analytics.get("language_distribution", {})
+    if lang_dist:
+        st.sidebar.markdown("##### 🌏 Languages Studied")
+        for lang, count in lang_dist.items():
+            st.sidebar.write(f"• **{lang}:** {count} text(s)")
+            
+    st.sidebar.write("---")
+
+    if st.session_state.get('heatmap_vocab'):
         st.sidebar.markdown("### 📊 AI Memory Dashboard")
         
         all_words = st.session_state['heatmap_vocab']
@@ -31,9 +57,20 @@ def render_sidebar(save_heatmap):
         if st.sidebar.button("🗑️ Reset All Progress"):
             st.session_state['heatmap_vocab'] = {}
             st.session_state['saved_session'] = None
+            st.session_state['learner_analytics'] = {
+                "total_texts_read": 0,
+                "language_distribution": {},
+                "correct_answers": 0,
+                "total_questions_answered": 0,
+                "mistake_types_distribution": {"Inference": 0, "False Assumption": 0, "Careless Reading": 0}
+            }
             save_heatmap({})
+            from storage import save_analytics
+            save_analytics(st.session_state['learner_analytics'])
             if os.path.exists("reading_session.json"):
                 os.remove("reading_session.json")
+            if os.path.exists("learner_analytics.json"):
+                os.remove("learner_analytics.json")
             st.rerun()
 
 def render_vocabulary_assistant(vocabulary, save_heatmap, api_key):
