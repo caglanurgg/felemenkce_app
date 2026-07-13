@@ -181,6 +181,47 @@ def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=Tru
     <strong style="color: #1c8cf0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💡 Teacher's Note & Language Insight</strong>
     <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)
 
+# 📊 SPRINT 8.2: MODÜLER ANALİTİK TETİKLEME (ui.py sadece olay üretir)
+        # Önce bu testteki toplam doğru sayısını hesaplayalım
+        total_correct = 0
+        total_q = 0
+        
+        if show_tf and "true_false" in exercises:
+            for i, tf in enumerate(exercises["true_false"]):
+                if user_tf_answers.get(i) != "Not Answered":
+                    total_q += 1
+                    user_bool = True if user_tf_answers[i] == "True" else False
+                    if user_bool == tf.get('correct_answer'):
+                        total_correct += 1
+                        
+        if show_mc and "multiple_choice" in exercises:
+            for i, mc in enumerate(exercises["multiple_choice"]):
+                if user_mc_answers.get(i) != "Not Answered":
+                    total_q += 1
+                    correct_opt = mc.get('correct_answer')
+                    if user_mc_answers[i].startswith(correct_opt) or correct_opt in user_mc_answers[i]:
+                        total_correct += 1
+
+        if total_q > 0:
+            # app.py'da session_state'e yüklediğimiz hedef dil bilgisini çekelim
+            # (Streamlit state'inden dili güvenle okuyoruz)
+            current_lang = st.session_state.get('saved_session', {}).get('ui_target_language', 'Unknown')
+            
+            # ➔ analytics.py hesaplamayı yapar, ui.py sadece veriyi paslar
+            updated_data, session_summary = update_analytics(
+                st.session_state['learner_analytics'],
+                total_correct,
+                total_q,
+                current_lang
+            )
+            
+            # State'i güncelle ve ➔ storage.py ile diske yazdır
+            st.session_state['learner_analytics'] = updated_data
+            save_analytics(updated_data)
+            
+            # Anlık başarıyı ekrana tatlı bir kartla basalım
+            st.toast(f"📊 Session Saved! Accuracy: %{session_summary['accuracy']}", icon="📈")
+
         # Open-ended değerlendirme tetikleyicisi (Güvenli Sürüm)
         if show_writing and user_writing_answer.strip():
             st.markdown("### 📝 Writing Feedback")
