@@ -121,10 +121,21 @@ def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=Tru
                 user_mc_answers[i] = ans
             st.write("---")
             
-        # 3. Open-ended Writing Bölümü (Eksik olan kısım eklendi)
+        # 3. Open-ended Writing Bölümü (Güvenli Şema Kontrolü)
         if show_writing and "open_ended" in exercises and exercises["open_ended"]:
             st.markdown("### ✍️ Open-ended Writing Prompt")
-            st.write(f"**Prompt:** {exercises['open_ended'].get('prompt', 'Write a brief response based on the text.')}")
+            
+            # Gelen verinin dictionary olup olmadığını garantiye alıyoruz
+            open_ended_data = exercises["open_ended"]
+            if isinstance(open_ended_data, list) and len(open_ended_data) > 0:
+                open_ended_data = open_ended_data[0]
+                
+            if isinstance(open_ended_data, dict):
+                prompt_text = open_ended_data.get('prompt', 'Write a brief response based on the text.')
+            else:
+                prompt_text = str(open_ended_data)
+                
+            st.write(f"**Prompt:** {prompt_text}")
             user_writing_answer = st.text_area("Type your essay/response here:", key="open_ended_user_input", height=150)
             st.write("---")
             
@@ -168,11 +179,16 @@ def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=Tru
     <strong style="color: #1c8cf0; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">💡 Teacher's Note & Language Insight</strong>
     <div style="font-size: 1.15rem; line-height: 1.7; white-space: pre-wrap; margin-top: 8px; color: #E5E7EB;">{explanation}</div></div>""", unsafe_allow_html=True)
 
-        # Open-ended değerlendirme tetikleyicisi
+        # Open-ended değerlendirme tetikleyicisi (Güvenli Sürüm)
         if show_writing and user_writing_answer.strip():
             st.markdown("### 📝 Writing Feedback")
             with st.spinner("Yazınız analiz ediliyor..."):
-                writing_prompt = exercises['open_ended'].get('prompt', '')
+                open_ended_data = exercises.get("open_ended", {})
+                if isinstance(open_ended_data, list) and len(open_ended_data) > 0:
+                    open_ended_data = open_ended_data[0]
+                
+                writing_prompt = open_ended_data.get('prompt', '') if isinstance(open_ended_data, dict) else str(open_ended_data)
+                
                 explanation = generate_explanation(api_key, "Turkish", reading_text, writing_prompt, user_writing_answer, "Open-ended Essay Response")
                 st.markdown(f"""<div style="background-color: rgba(16, 185, 129, 0.08); border-left: 6px solid #10b981; padding: 18px; border-radius: 8px; margin-top: 12px; margin-bottom: 12px;">
     <strong style="color: #10b981; font-size: 1.2rem; display: flex; align-items: center; gap: 8px;">✍️ Writing Coach Evaluation</strong>
