@@ -246,7 +246,7 @@ def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=Tru
             # (Streamlit state'inden dili güvenle okuyoruz)
             current_lang = st.session_state.get('saved_session', {}).get('ui_target_language', 'Unknown')
             
-            # ➔ analytics.py hesaplamayı yapar, ui.py sadece veriyi paslar
+            # 1. Önce hesaplamayı yap
             updated_data, session_summary = update_analytics(
                 st.session_state['learner_analytics'],
                 total_correct,
@@ -254,12 +254,33 @@ def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=Tru
                 current_lang
             )
             
-            # State'i güncelle ve ➔ storage.py ile diske yazdır
+            # 2. Sonra anında state'i güncelle ve diske yaz 
             st.session_state['learner_analytics'] = updated_data
             save_analytics(updated_data)
             
-            # Anlık başarıyı ekrana tatlı bir kartla basalım
+            # 3. Geçici bildirimi fırlat
             st.toast(f"📊 Session Saved! Accuracy: %{session_summary['accuracy']}", icon="📈")
+
+            # 4. En son güncel veriyle kalıcı HTML kartlarını ekrana bas
+            st.markdown("---")
+            st.markdown("### 📈 Overall Learner Analytics Progress")
+            
+            m_col1, m_col2, m_col3 = st.columns(3)
+            with m_col1:
+                st.markdown(f"""<div style="background-color: rgba(59, 130, 246, 0.1); border: 1px solid #3b82f6; padding: 15px; border-radius: 8px; text-align: center;">
+                    <span style="font-size: 0.9rem; color: #9ca3af; display: block;">Total Sessions 📚</span>
+                    <strong style="font-size: 1.8rem; color: #3b82f6;">{updated_data.get('total_texts_read', 0)}</strong>
+                </div>""", unsafe_allow_html=True)
+            with m_col2:
+                st.markdown(f"""<div style="background-color: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 15px; border-radius: 8px; text-align: center;">
+                    <span style="font-size: 0.9rem; color: #9ca3af; display: block;">Overall Accuracy 🎯</span>
+                    <strong style="font-size: 1.8rem; color: #10b981;">%{session_summary['accuracy']}</strong>
+                </div>""", unsafe_allow_html=True)
+            with m_col3:
+                st.markdown(f"""<div style="background-color: rgba(245, 158, 11, 0.1); border: 1px solid #f59e0b; padding: 15px; border-radius: 8px; text-align: center;">
+                    <span style="font-size: 0.9rem; color: #9ca3af; display: block;">Total Questions ❓</span>
+                    <strong style="font-size: 1.8rem; color: #f59e0b;">{updated_data.get('total_questions_answered', 0)}</strong>
+                </div>""", unsafe_allow_html=True)
 
         # Open-ended değerlendirme tetikleyicisi (Güvenli Sürüm)
         if show_writing and user_writing_answer.strip():
