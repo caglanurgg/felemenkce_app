@@ -241,17 +241,41 @@ def render_exercises(exercises, api_key, reading_text, show_tf=True, show_mc=Tru
                     if user_mc_answers[i].startswith(correct_opt) or correct_opt in user_mc_answers[i]:
                         total_correct += 1
 
+# 🎯 SPRINT 8.4: Hata Türlerini Dinamik Olarak Sayma
+        mistake_counter = {"Inference": 0, "False Assumption": 0, "Careless Reading": 0}
+        
+        if show_tf and "true_false" in exercises:
+            for i, tf in enumerate(exercises["true_false"]):
+                if user_tf_answers.get(i) != "Not Answered":
+                    user_bool = True if user_tf_answers[i] == "True" else False
+                    if user_bool != tf.get('correct_answer'):
+                        # Eğer yanlışsa hata türünü al ve arttır
+                        m_type = tf.get('mistake_type', 'Careless Reading')
+                        if m_type in mistake_counter:
+                            mistake_counter[m_type] += 1
+                            
+        if show_mc and "multiple_choice" in exercises:
+            for i, mc in enumerate(exercises["multiple_choice"]):
+                if user_mc_answers.get(i) != "Not Answered":
+                    correct_opt = mc.get('correct_answer')
+                    if not (user_mc_answers[i].startswith(correct_opt) or correct_opt in user_mc_answers[i]):
+                        # Eğer yanlışsa hata türünü al ve arttır
+                        m_type = mc.get('mistake_type', 'Inference')
+                        if m_type in mistake_counter:
+                            mistake_counter[m_type] += 1
+
         if total_q > 0:
             # app.py'da session_state'e yüklediğimiz hedef dil bilgisini çekelim
             # (Streamlit state'inden dili güvenle okuyoruz)
             current_lang = st.session_state.get('saved_session', {}).get('ui_target_language', 'Unknown')
             
-            # 1. Önce hesaplamayı yap
+            # 1. Önce hesaplamayı yap (Artık mistake_counter da gidiyor)
             updated_data, session_summary = update_analytics(
                 st.session_state['learner_analytics'],
                 total_correct,
                 total_q,
-                current_lang
+                current_lang,
+                mistake_counter 
             )
             
             # 2. Sonra anında state'i güncelle ve diske yaz 
