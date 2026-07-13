@@ -1,6 +1,8 @@
 import streamlit as st
 import os
 from ai_engine import generate_explanation, generate_speech
+from analytics import update_analytics
+from storage import save_analytics
 
 def render_sidebar(save_heatmap):
     """Yan paneldeki AI Hafıza Dashboard'unu ve Isı Haritasını çizer."""
