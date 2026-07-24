@@ -1,9 +1,28 @@
 import re
+import unicodedata
+
+def make_accent_free_pattern(word):
+    """
+    Kelimedeki e, a, i, o, u harflerini aksanlı varyasyonlarını kapsayacak 
+    regex gruplarına dönüştürür. (Örn: 'melodi' -> 'm[eéèêë]l[oóòôö]d[iíìîï]')
+    """
+    accent_map = {
+        'a': '[aàáâãäå]',
+        'e': '[eéèêë]',
+        'i': '[iíìîï]',
+        'o': '[oóòôö]',
+        'u': '[uúùûü]',
+        'c': '[cç]'
+    }
+    pattern_str = ""
+    for char in word.lower():
+        pattern_str += accent_map.get(char, re.escape(char))
+    return pattern_str
 
 def highlight_text(text, heatmap_vocab):
     """
     Fransızca, İspanyolca ve İngilizce gibi dillerdeki aksanları (é, à, ç) 
-    ve fiil/isim çekimlerini (captiver -> captivé, mélodie -> mélodies) kökten yakalayan 
+    ve fiil/isim çekimlerini (captiver -> captivé, melodie -> mélodies) kökten yakalayan 
     evrensel akıllı highlighter motoru.
     """
     if not heatmap_vocab:
@@ -28,7 +47,7 @@ def highlight_text(text, heatmap_vocab):
         if re.search(r'[\uac00-\ud7a3]', word):
             pattern = re.compile(re.escape(word), re.IGNORECASE)
             
-        # 2.(French, Spanish, English, Nederlands)
+        # 2. French, Spanish, English, Nederlands
         else:
             # Fiil ve isim kökünü esnetme (Romance Language Stemmer)
             stem = word
@@ -36,13 +55,15 @@ def highlight_text(text, heatmap_vocab):
             # Fiil son ekleri (-er, -ir, -re, -ar) esnetmesi
             if len(word) > 4 and word.endswith(('er', 'ir', 're', 'ar')):
                 stem = word[:-2]
-            # İsim/Sıfat sonundaki tekil/çoğul veya aksanlı dişil ek esnetmesi (mélodie -> mélodi, spectaculaire -> spectaculair)
+            # İsim/Sıfat sonundaki tekil/çoğul veya dişil ek esnetmesi
             elif len(word) > 4 and word.endswith(('e', 's', 'x')):
                 stem = word[:-1]
 
-            # [a-zA-Za-zA-ZÀ-ÿ]* deseni Fransızca aksanlı karakterler (é, è, à, ç vb.) 
-            # ve tüm çekim takılarını (s, es, ant, ées) kapsayacak şekilde esnek arama yapar.
-            pattern = re.compile(r'(?<!\w)' + re.escape(stem) + r'[\wÀ-ÿ]*(?!\w)', re.IGNORECASE)
+            # Aksan toleranslı regex deseni oluştur
+            flexible_stem = make_accent_free_pattern(stem)
+
+            # [a-zA-Za-zA-ZÀ-ÿ]* deseni aksanlı karakterler ve çekim takılarını kapsar
+            pattern = re.compile(r'(?<!\w)' + flexible_stem + r'[\wÀ-ÿ]*(?!\w)', re.IGNORECASE)
 
         text = pattern.sub(f'<span class="{class_name}">\\g<0></span>', text)
 
