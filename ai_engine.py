@@ -1,6 +1,27 @@
 import json
 from openai import OpenAI
 
+SENTENCE_LENGTH_LIMITS = {
+    "A1": (8, 12),
+    "A2": (10, 14),
+    "B1": (12, 17),
+    "B2": (15, 22),
+    "C1": (18, 28)
+}
+
+def get_cognitive_config(level: str) -> dict:
+    """Kullanıcının seviyesine göre dinamik bilişsel kurallar döndürür."""
+    min_len, max_len = SENTENCE_LENGTH_LIMITS.get(level.upper(), (12, 17))
+    
+    return {
+        "max_sentence_length": max_len,
+        "min_sentence_length": min_len,
+        "use_active_verbs": True,
+        "avoid_metadiscourse": True,
+        "show_not_tell": True,
+        "concrete_scene_per_paragraph": 1
+    }
+
 def build_memory_instruction(heatmap_vocab):
     """Kullanıcının geçmiş kelime hafızasına göre adaptif prompt talimatını hazırlar."""
     if not heatmap_vocab:
@@ -26,32 +47,47 @@ def build_memory_instruction(heatmap_vocab):
 
 def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayisi, konu, heatmap_vocab, exercise_settings):
     """
-    OpenAI API ile konuşur, promptları birleştirir, JSON'ı parse eder 
+    OpenAI API ile konuşur, promptları birleştirir, JSON'ı parse eder
     ve geriye (True/False, parsed_data, error_message) şeklinde 3'lü tuple döndürür.
     """
+
     # Eğer kullanıcı konu girmediyse yapay zeka rastgele ama seviyeye uygun saçmalasın
     final_topic = konu if konu.strip() else "General topics suitable for this level"
+
+    # 1. Bilişsel Seviye Konfigürasyonunu Alıyoruz (Pinker / Cognitive Load)
+    cognitive_config = get_cognitive_config(seviye)
+
+    # 2. Operasyonel Bilişsel Kurallar Bloğu
+    cognitive_rules = f"""
+    STRICT READING COMPREHENSION RULES (Cognitive Optimization):
+    1. SYNTAX & LENGTH: Keep sentences strictly between {cognitive_config['min_sentence_length']} and {cognitive_config['max_sentence_length']} words.
+    2. SHOW, DON'T TELL: Do not use abstract emotional descriptions (e.g. instead of "She was sad", write "She sat in silence and stared at the floor"). Include at least {cognitive_config['concrete_scene_per_paragraph']} concrete visual scene per paragraph.
+    3. NO ZOMBIENESS: Use active, direct verbs only. Avoid nominalizations (e.g. use "investigate" instead of "make an investigation").
+    4. NO META-DISCOURSE: Do NOT write "In this story..." or "You will read...". Start directly with the narrative scene.
+    """
 
     try:
         client = OpenAI(api_key=api_key)
         # Egzersiz şeması ve kurallarının dinamik inşası
         exercise_requirements = []
         json_exercise_schema = {}
-        
+
         if exercise_settings.get("show_tf"):
-            exercise_requirements.append("- true_false: 3 statements based on the text. Each statement MUST have 'statement' (string), 'correct_answer' (boolean), and 'evidence' (the exact sentence from the text that proves it, string)")
+            exercise_requirements.append("- true_false: 3 statements based on the text. Each statement MUST have 'statement' (string), 'correct_answer' (boolean), 'evidence' (exact sentence from text)")
             json_exercise_schema["true_false"] = [{"statement": "example statement", "correct_answer": True, "evidence": "exact sentence from text"}]
-            
+
         if exercise_settings.get("show_mc"):
-            exercise_requirements.append("- multiple_choice: 3 questions. Each question MUST have 'question' (string), 'options' (array of strings), 'correct_answer' (string matching one option), and 'evidence' (the exact sentence from the text where the answer is found, string)")
+            exercise_requirements.append("- multiple_choice: 3 questions. Each question MUST have 'question' (string), 'options' (array of strings), 'correct_answer': 'Option A', 'evidence': 'exact sentence from text'")
             json_exercise_schema["multiple_choice"] = [{"question": "example question", "options": ["Option A", "Option B"], "correct_answer": "Option A", "evidence": "exact sentence from text"}]
-            
+
         if exercise_settings.get("show_writing"):
             exercise_requirements.append("- open_ended: 1 writing prompt string asking the user to write a short paragraph.")
             json_exercise_schema["open_ended"] = "example writing prompt here"
             
         exercise_req_text = "\n".join(exercise_requirements)
         adaptive_instruction = build_memory_instruction(heatmap_vocab)
+
+        cognitive_instruction = f"\n{cognitive_rules}\n"
         
         system_prompt = (
             "You are an expert " + str(target_language) + " language teacher that outputs raw JSON data.\n"
@@ -83,7 +119,9 @@ def generate_reading_package(api_key, target_language, seviye, ton, kelime_sayis
             "CRITICAL: The vocabulary words MUST be strictly in the selected target language (" + str(target_language) + ") and MUST match or be very close to the requested CEFR level (" + str(seviye) + "). NEVER mix words from other languages or previous topics.\n"
             "Include only the requested exercises in the 'exercises' object:\n" + str(exercise_req_text) + "\n"
             + str(adaptive_instruction)
-        )
+            + str(cognitive_instruction)
+            )
+
         
         # Mimarideki User Prompt
         user_prompt = f"Write a reading text in {target_language}. Level: {seviye}, Tone: {ton}, Length: ~{kelime_sayisi} words, Subject: {final_topic}"
