@@ -28,3 +28,62 @@ def update_analytics(analytics, correct_answers, total_questions, language, mist
     }
     
     return analytics, session_summary
+
+def update_cognitive_profile(filepath="learner_analytics.json", session_data=None):
+    """
+    Okuma tamamlandığında kullanıcının bilişsel metriklerini 
+    performansına göre dinamik olarak günceller.
+    """
+    if session_data is None:
+        return
+
+    import json
+    import os
+
+    # Dosya yoksa bile çökmesin, varsayılan şemayla oluştursun
+    if not os.path.exists(filepath):
+        data = {
+            "user_id": "default_user",
+            "heatmap_vocab": {},
+            "reading_history": [],
+            "cognitive_profile": {}
+        }
+    else:
+        try:
+            with open(filepath, "r", encoding="utf-8") as f:
+                data = json.load(f)
+        except Exception:
+            data = {}
+
+    profile = data.setdefault("cognitive_profile", {
+        "visual_thinking_index": 0.5,
+        "inference_accuracy": 0.5,
+        "abstract_tolerance": 0.5,
+        "avg_reading_speed_wpm": 0,
+        "total_texts_read": 0
+    })
+
+    # Toplam okunan metin sayısını artır
+    profile["total_texts_read"] += 1
+
+    # Çıkarım başarısını güncelle (Oturumda inference skoru varsa)
+    if "inference_score" in session_data:
+        current_inf = profile.get("inference_accuracy", 0.5)
+        new_inf = session_data["inference_score"]
+        profile["inference_accuracy"] = round((current_inf * 0.7) + (new_inf * 0.3), 2)
+
+    # Okuma hızını güncelle (WPM)
+    if "wpm" in session_data and session_data["wpm"] > 0:
+        current_wpm = profile.get("avg_reading_speed_wpm", 0)
+        if current_wpm == 0:
+            profile["avg_reading_speed_wpm"] = session_data["wpm"]
+        else:
+            profile["avg_reading_speed_wpm"] = round((current_wpm * 0.8) + (session_data["wpm"] * 0.2), 1)
+
+    data["cognitive_profile"] = profile
+
+    try:
+        with open(filepath, "w", encoding="utf-8") as f:
+            json.dump(data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Bilişsel profil güncellenirken hata oluştu: {e}")
